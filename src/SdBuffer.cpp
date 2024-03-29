@@ -9,6 +9,19 @@ SdResult sdCreateBuffer(const SdBufferCreateInfo* createInfo, SdBuffer* buffer)
 	ptr->stride    = createInfo->stride;
 	ptr->usage     = createInfo->usage;
 	ptr->indexType = createInfo->indexType;
+	
+	if (ptr->usage == SD_BUFFER_USAGE_INDEX)
+	{
+		switch (ptr->indexType)
+		{
+		case SD_INDEX_TYPE_16_BIT:
+			ptr->stride = sizeof(uint16_t);
+			break;
+		case SD_INDEX_TYPE_32_BIT:
+			ptr->stride = sizeof(uint32_t);
+			break;
+		}
+	}
 
 	*buffer = ptr;
 	return SD_SUCCESS;

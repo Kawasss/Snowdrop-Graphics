@@ -42,6 +42,58 @@ vec4 FragmentProcessor(const vec2 pos)
 	return vec4(1, 1, 1, 1);
 }
 
+SdFramebuffer framebuffer = SD_NULL;
+SdBuffer vertexBuffer = SD_NULL;
+SdBuffer indexBuffer = SD_NULL;
+
+void CreateFramebuffer()
+{
+	SdFramebufferCreateInfo createInfo{};
+	createInfo.imageCount = 1;
+
+	SdImageImportInfo importInfo{};
+	importInfo.data = surface->pixels;
+	importInfo.width = surface->w;
+	importInfo.height = surface->h;
+	importInfo.flipY = true;
+
+	sdCreateFramebuffer(&createInfo, &framebuffer);
+	sdImportImage(&importInfo, &framebuffer->images[0]);
+
+	sdBindFramebuffer(framebuffer);
+}
+
+void CreateVertexBuffer()
+{
+	vec2 vertices[4] = { { -0.5f, -0.5f }, { -0.5f, 0.5f }, { 0.5f, -0.5f }, { 0.5f, 0.5f } };
+
+	SdBufferCreateInfo createInfo{};
+	createInfo.usage = SD_BUFFER_USAGE_VERTEX;
+	createInfo.stride = sizeof(vec2);
+	createInfo.size = sizeof(vec2) * 4;
+
+	sdCreateBuffer(&createInfo, &vertexBuffer);
+
+	void* bufferData = sdAccessBuffer(vertexBuffer);
+	memcpy(bufferData, vertices, sizeof(vec2) * 4);
+}
+
+void CreateIndexBuffer()
+{
+	uint16_t indices[6] = { 0, 1, 2, 1, 2, 3 };
+
+	SdBufferCreateInfo createInfo{};
+	createInfo.usage = SD_BUFFER_USAGE_INDEX;
+	createInfo.indexType = SD_INDEX_TYPE_16_BIT;
+	createInfo.stride = sizeof(uint16_t);
+	createInfo.size = sizeof(uint16_t) * 6;
+
+	sdCreateBuffer(&createInfo, &indexBuffer);
+
+	void* bufferData = sdAccessBuffer(indexBuffer);
+	memcpy(bufferData, indices, sizeof(uint16_t) * 6);
+}
+
 int main()
 {
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -56,30 +108,19 @@ int main()
 	float frameDelta = 0;
 	auto timeSinceLastFrame = std::chrono::high_resolution_clock::now();
 
-	vec2 vertices[3] = { { -0.5f, -0.5f }, { 0, 0.5f }, { 0.5f, -0.5f } };
-
-	sdSetExternalRenderTarget((uint32_t*)surface->pixels, surface->w, surface->h);
 	sdSetVertexProcessorFunction(&VertexProcessor);
 	sdSetFragmentProcessorFunction(&FragmentProcessor);
 
-	SdBufferCreateInfo bufferCreateInfo{};
-	bufferCreateInfo.usage = SD_BUFFER_USAGE_VERTEX;
-	bufferCreateInfo.stride = sizeof(vec2);
-	bufferCreateInfo.size = sizeof(vec2) * 3;
-
-	SdBuffer vertexBuffer = SD_NULL;
-	if (sdCreateBuffer(&bufferCreateInfo, &vertexBuffer) != SD_SUCCESS)
-		return 3;
-
-	void* bufferData = sdAccessBuffer(vertexBuffer);
-	memcpy(bufferData, vertices, sizeof(vec2) * 3);
+	CreateVertexBuffer();
+	CreateIndexBuffer();
+	CreateFramebuffer();
 
 	while (!close)
 	{
 		ProcessSDLEvents(window);
 		SDL_LockSurface(surface);
 		memset(surface->pixels, 0, surface->w * surface->h * sizeof(uint32_t));
-		sdDraw(vertexBuffer);
+		sdDrawIndexed(vertexBuffer, indexBuffer);
 		SDL_UnlockSurface(surface);
 		SDL_UpdateWindowSurface(window);
 

@@ -5,6 +5,7 @@
 #define SD_NULL nullptr
 
 typedef uint64_t SdSize;
+typedef uint32_t SdFlags;
 
 enum SdResult
 {
@@ -47,23 +48,65 @@ inline extern SdResult sdCreateBuffer(const SdBufferCreateInfo* createInfo, SdBu
 inline extern void     sdDestroyBuffer(SdBuffer buffer);
 inline extern void*    sdAccessBuffer(SdBuffer buffer);
 
+enum SdImageFlags : SdFlags
+{
+	SD_IMAGE_EXTERNAL_BIT = 1 << 0,
+	SD_IMAGE_FLIP_Y_BIT = 1 << 1,
+};
+
+struct SdImageImportInfo
+{
+	void* data;
+	uint32_t width;
+	uint32_t height;
+	bool flipY;
+};
+
+struct SdImageCreateInfo
+{
+	uint32_t width;
+	uint32_t height;
+	uint32_t stride;
+	SdFlags flags;
+	int type; // unused
+};
+
+struct SdImage_t
+{
+	void* data;
+	uint32_t width;
+	uint32_t height;
+	SdFlags flags;
+	int type; // unused
+};
+typedef SdImage_t* SdImage;
+
+inline extern SdResult sdCreateImage(const SdImageCreateInfo* createInfo, SdImage* image);
+inline extern void     sdDestroyImage(SdImage image);
+inline extern void*    sdAccessImage(SdImage image);
+inline extern SdResult sdImportImage(const SdImageImportInfo* importInfo, SdImage* image);
+
 struct SdFramebufferCreateInfo
 {
-
+	uint32_t imageCount;
 };
 
 struct SdFramebuffer_t
 {
-
+	SdImage* images;
+	uint32_t imageCount;
 };
 typedef SdFramebuffer_t* SdFramebuffer;
 
 inline extern SdResult sdCreateFramebuffer(const SdFramebufferCreateInfo* createInfo, SdFramebuffer* framebuffer);
 inline extern void     sdDestroyFramebuffer(SdFramebuffer framebuffer);
+inline extern SdResult sdBindImage(SdFramebuffer framebuffer, SdImage image, uint32_t index);
 
 inline extern SdResult sdDraw(SdBuffer vertexBuffer);
-inline extern SdResult sdDrawIndexed(SdBuffer VertexBuffer, SdBuffer indexBuffer);
+inline extern SdResult sdDrawIndexed(SdBuffer vertexBuffer, SdBuffer indexBuffer);
+inline extern SdResult sdBindFramebuffer(SdFramebuffer framebuffer);
 
 inline extern void sdSetVertexProcessorFunction(vec4 (*vertProc)(const void*));
 inline extern void sdSetFragmentProcessorFunction(vec4(*fragProc)(const vec2));
-inline extern void sdSetExternalRenderTarget(uint32_t* data, uint32_t width, uint32_t height);
+
+inline extern vec4 sdTexture(SdImage image, vec2 uv);
