@@ -3,6 +3,7 @@
 #include "maths.h"
 
 #define SD_NULL nullptr
+#define SD_DEPTH_INDEX -1
 
 typedef uint64_t SdSize;
 typedef uint32_t SdFlags;
@@ -48,6 +49,12 @@ inline extern SdResult sdCreateBuffer(const SdBufferCreateInfo* createInfo, SdBu
 inline extern void     sdDestroyBuffer(SdBuffer buffer);
 inline extern void*    sdAccessBuffer(SdBuffer buffer);
 
+enum SdImageFormat
+{
+	SD_FORMAT_R8G8B8A8_UNORM,
+	SD_FORMAT_R8_UNORM,
+};
+
 enum SdImageFlags : SdFlags
 {
 	SD_IMAGE_EXTERNAL_BIT = 1 << 0,
@@ -60,15 +67,15 @@ struct SdImageImportInfo
 	uint32_t width;
 	uint32_t height;
 	bool flipY;
+	SdImageFormat format;
 };
 
 struct SdImageCreateInfo
 {
 	uint32_t width;
 	uint32_t height;
-	uint32_t stride;
 	SdFlags flags;
-	int type; // unused
+	SdImageFormat format; // unused
 };
 
 struct SdImage_t
@@ -76,8 +83,9 @@ struct SdImage_t
 	void* data;
 	uint32_t width;
 	uint32_t height;
+	uint32_t stride;
 	SdFlags flags;
-	int type; // unused
+	SdImageFormat format;
 };
 typedef SdImage_t* SdImage;
 
@@ -86,21 +94,29 @@ inline extern void     sdDestroyImage(SdImage image);
 inline extern void*    sdAccessImage(SdImage image);
 inline extern SdResult sdImportImage(const SdImageImportInfo* importInfo, SdImage* image);
 
+enum SdFramebufferFlags : SdFlags
+{
+	SD_FRAMEBUFFER_DEPTH_BIT = 1 << 0,
+};
+
 struct SdFramebufferCreateInfo
 {
 	uint32_t imageCount;
+	SdFramebufferFlags flags;
 };
 
 struct SdFramebuffer_t
 {
 	SdImage* images;
 	uint32_t imageCount;
+	SdImage depth;
+	SdFramebufferFlags flags;
 };
 typedef SdFramebuffer_t* SdFramebuffer;
 
 inline extern SdResult sdCreateFramebuffer(const SdFramebufferCreateInfo* createInfo, SdFramebuffer* framebuffer);
 inline extern void     sdDestroyFramebuffer(SdFramebuffer framebuffer);
-inline extern SdResult sdBindImage(SdFramebuffer framebuffer, SdImage image, uint32_t index);
+inline extern SdResult sdFramebufferBindImage(SdFramebuffer framebuffer, SdImage image, int index);
 
 inline extern SdResult sdDraw(SdBuffer vertexBuffer);
 inline extern SdResult sdDrawIndexed(SdBuffer vertexBuffer, SdBuffer indexBuffer);

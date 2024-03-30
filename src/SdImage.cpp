@@ -1,15 +1,27 @@
 #include "snowdrop.h"
 
+uint32_t GetStride(SdImageFormat format)
+{
+	switch (format)
+	{
+	case SD_FORMAT_R8G8B8A8_UNORM: return sizeof(uint32_t);
+	case SD_FORMAT_R8_UNORM:       return sizeof(uint8_t);
+	}
+	return 0;
+}
+
 SdResult sdCreateImage(const SdImageCreateInfo* createInfo, SdImage* image)
 {
 	SdImage_t* result = new SdImage_t();
 
-	SdSize size = createInfo->width * createInfo->height * createInfo->stride;
+	uint32_t stride = GetStride(createInfo->format);
+	SdSize size = createInfo->width * createInfo->height * stride;
 	result->data = new uint8_t[size];
 	result->width = createInfo->width;
 	result->height = createInfo->height;
 	result->flags = createInfo->flags;
-	result->type = createInfo->type;
+	result->format = createInfo->format;
+	result->stride = stride;
 
 	*image = result;
 	return SD_SUCCESS;
@@ -31,6 +43,7 @@ SdResult sdImportImage(const SdImageImportInfo* importInfo, SdImage* image)
 {
 	SdImage_t* result = new SdImage_t();
 	
+	result->stride = GetStride(importInfo->format);
 	result->data = importInfo->data;
 	result->width = importInfo->width;
 	result->height = importInfo->height;
@@ -48,6 +61,7 @@ SdResult sdCreateFramebuffer(const SdFramebufferCreateInfo* createInfo, SdFrameb
 
 	result->images = new SdImage[createInfo->imageCount];
 	result->imageCount = createInfo->imageCount;
+	result->flags = createInfo->flags;
 
 	*framebuffer = result;
 	return SD_SUCCESS;
@@ -56,15 +70,17 @@ SdResult sdCreateFramebuffer(const SdFramebufferCreateInfo* createInfo, SdFrameb
 void sdDestroyFramebuffer(SdFramebuffer framebuffer)
 {
 	for (uint32_t i = 0; i < framebuffer->imageCount; i++)
-	{
-		if (framebuffer->images[i]) delete framebuffer->images[i]; // this assumes ownership of the image
-	}
+		if (framebuffer->images[i]) sdDestroyImage(framebuffer->images[i]); // this assumes ownership of the image
+	if (framebuffer->depth) sdDestroyImage(framebuffer->depth);
 	delete framebuffer;
 }
 
-SdResult sdBindImage(SdFramebuffer framebuffer, SdImage image, uint32_t index)
+SdResult sdFramebufferBindImage(SdFramebuffer framebuffer, SdImage image, int index)
 {
-	framebuffer->images[index] = image;
+	if (index == SD_DEPTH_INDEX)
+		framebuffer->depth = image;
+	else
+		framebuffer->images[index] = image;
 	return SD_SUCCESS;
 }
 

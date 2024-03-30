@@ -29,12 +29,12 @@ void ProcessSDLEvents(SDL_Window* window)
 float rotation = 0.0f;
 vec4 VertexProcessor(const void* block)
 {
-	vec2* vert = (vec2*)block;
+	vec3* vert = (vec3*)block;
 
 	if (rotation > 360) rotation = 0;
-	mat4 rotMatrix = glm::rotate(glm::mat4(1), glm::radians(rotation), glm::vec3(0, 0, 1));
+	mat4 rotMatrix = glm::rotate(glm::mat4(1), glm::radians(rotation), glm::vec3(1, 0, 0));
 
-	return rotMatrix * vec4(*vert, 0, 1);
+	return rotMatrix * vec4(*vert, 1);
 }
 
 vec4 FragmentProcessor(const vec2 pos)
@@ -49,9 +49,11 @@ SdBuffer indexBuffer = SD_NULL;
 void CreateFramebuffer()
 {
 	SdFramebufferCreateInfo createInfo{};
+	createInfo.flags = SD_FRAMEBUFFER_DEPTH_BIT;
 	createInfo.imageCount = 1;
 
 	SdImageImportInfo importInfo{};
+	importInfo.format = SD_FORMAT_R8G8B8A8_UNORM;
 	importInfo.data = surface->pixels;
 	importInfo.width = surface->w;
 	importInfo.height = surface->h;
@@ -65,33 +67,92 @@ void CreateFramebuffer()
 
 void CreateVertexBuffer()
 {
-	vec2 vertices[4] = { { -0.5f, -0.5f }, { -0.5f, 0.5f }, { 0.5f, -0.5f }, { 0.5f, 0.5f } };
+	constexpr int size = 36;
+	vec3 vertices[size] =
+	{
+		{-.5f, -.5f, -.5f },
+		{ .5f,  .5f, -.5f },
+		{ .5f, -.5f, -.5f },
+		{ .5f,  .5f, -.5f },
+		{ -.5f, -.5f, -.5f },
+		{ -.5f,  .5f, -.5f },
+		// front face
+		{ -.5f, -.5f,  .5f },
+		{ .5f, -.5f,  .5f },
+		{ .5f,  .5f,  .5f },
+		{ .5f,  .5f,  .5f },
+		{ -.5f,  .5f,  .5f },
+		{ -.5f, -.5f,  .5f },
+		// left face
+		{ -.5f,  .5f,  .5f },
+		{ -.5f,  .5f, -.5f },
+		{ -.5f, -.5f, -.5f },
+		{ -.5f, -.5f, -.5f },
+		{ -.5f, -.5f,  .5f },
+		{ -.5f,  .5f,  .5f },
+		// right face
+		{ .5f,  .5f,  .5f },
+		{ .5f, -.5f, -.5f },
+		{ .5f,  .5f, -.5f },
+		{ .5f, -.5f, -.5f },
+		{ .5f,  .5f,  .5f },
+		{ .5f, -.5f,  .5f },
+		// bottom face
+		{ -.5f, -.5f, -.5f },
+		{ .5f, -.5f, -.5f },
+		{ .5f, -.5f,  .5f },
+		{ .5f, -.5f,  .5f },
+		{ -.5f, -.5f,  .5f },
+		{ -.5f, -.5f, -.5f },
+		// top face
+		{ -.5f,  .5f, -.5f },
+		{ .5f,  .5f , .5f },
+		{ .5f,  .5f, -.5f },
+		{ .5f,  .5f,  .5f },
+		{ -.5f,  .5f, -.5f },
+		{ -.5f,  .5f,  .5f }
+	};
 
 	SdBufferCreateInfo createInfo{};
 	createInfo.usage = SD_BUFFER_USAGE_VERTEX;
-	createInfo.stride = sizeof(vec2);
-	createInfo.size = sizeof(vec2) * 4;
+	createInfo.stride = sizeof(vertices[0]);
+	createInfo.size = sizeof(vertices[0]) * size;
 
 	sdCreateBuffer(&createInfo, &vertexBuffer);
 
 	void* bufferData = sdAccessBuffer(vertexBuffer);
-	memcpy(bufferData, vertices, sizeof(vec2) * 4);
+	memcpy(bufferData, vertices, sizeof(vertices[0]) * size);
 }
 
 void CreateIndexBuffer()
 {
-	uint16_t indices[6] = { 0, 1, 2, 1, 2, 3 };
+	constexpr int size = 36;
+	uint16_t indices[size] = { 0, 1, 2, 1, 2, 3 };
+	for (int i = 0; i < size; i++)
+		indices[i] = i;
 
 	SdBufferCreateInfo createInfo{};
 	createInfo.usage = SD_BUFFER_USAGE_INDEX;
 	createInfo.indexType = SD_INDEX_TYPE_16_BIT;
 	createInfo.stride = sizeof(uint16_t);
-	createInfo.size = sizeof(uint16_t) * 6;
+	createInfo.size = sizeof(uint16_t) * size;
 
 	sdCreateBuffer(&createInfo, &indexBuffer);
 
 	void* bufferData = sdAccessBuffer(indexBuffer);
-	memcpy(bufferData, indices, sizeof(uint16_t) * 6);
+	memcpy(bufferData, indices, sizeof(uint16_t) * size);
+}
+
+void CreateDepthImage()
+{
+	SdImageCreateInfo createInfo{};
+	createInfo.format = SD_FORMAT_R8_UNORM;
+	createInfo.width = 800;
+	createInfo.height = 600;
+	
+	SdImage depth = SD_NULL;
+	sdCreateImage(&createInfo, &depth);
+	sdFramebufferBindImage(framebuffer, depth, SD_DEPTH_INDEX);
 }
 
 void CleanUp()
@@ -121,6 +182,7 @@ int main()
 	CreateVertexBuffer();
 	CreateIndexBuffer();
 	CreateFramebuffer();
+	CreateDepthImage();
 
 	while (!close)
 	{

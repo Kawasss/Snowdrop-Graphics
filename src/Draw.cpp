@@ -31,51 +31,63 @@ float GetDistance(vec2 v1, vec2 v2)
 
 void Rasterize(void* vert0, void* vert1, void* vert2)
 {
+	uint32_t width = renderTarget->images[0]->width;
+	uint32_t height = renderTarget->images[0]->height;
+
 	vec4 relPixels[3]{};
 	relPixels[0] = vertexProc(vert0);
 	relPixels[1] = vertexProc(vert1);
 	relPixels[2] = vertexProc(vert2);
 
-	vec2 pixelsPos[3]{};
+	vec4 pixelsPos[3]{};
+	vec2 min = vec2(-1), max = vec2(0);
 	for (int i = 0; i < 3; i++)
 	{
-		vec2 screenSpace = (vec2(relPixels[i]) + vec2(1)) * 0.5f;
-		pixelsPos[i] = vec2(screenSpace.x * renderTarget->images[0]->width, screenSpace.y * renderTarget->images[0]->height);
-	}
+		vec4 screenSpace = (vec4(relPixels[i]) + vec4(1)) * 0.5f;
+		pixelsPos[i] = vec4(screenSpace.x * width, screenSpace.y * height, screenSpace.z, screenSpace.w);
+		
+		max.x = pixelsPos[i].x > max.x ? pixelsPos[i].x : max.x;
+		max.y = pixelsPos[i].y > max.y ? pixelsPos[i].y : max.y;
 
-	std::future<void> proc[3];
-	for (int i = 0; i < 3; i++)
+		if (min == vec2(-1)) min = max;
+
+		min.x = pixelsPos[i].x < min.x ? pixelsPos[i].x : min.x;
+		min.y = pixelsPos[i].y < min.y ? pixelsPos[i].y : min.y;
+	}
+	float area = 0.5f * (pixelsPos[1].y * pixelsPos[2].x + pixelsPos[0].y * (-pixelsPos[1].x + pixelsPos[2].x) + pixelsPos[0].x * (pixelsPos[1].y - pixelsPos[2].y) + pixelsPos[1].x * pixelsPos[2].y);
+	if (area <= 0) return; 
+
+	bool inv = renderTarget->images[0]->flags & SD_IMAGE_FLIP_Y_BIT;
+	for (uint32_t y = min.y; y < max.y; y++)
 	{
-		proc[i] = std::async([=]()
+		for (uint32_t x = min.x; x <= max.x; x++)
+		{
+			uint64_t index = width * (inv ? height - y : y) + x;
+			if (index > width * height) continue;
+
+			vec4 p = vec4(x, y, 0, 1);
+
+			float s = 1 / (2 * area) * (pixelsPos[0].y * pixelsPos[2].x - pixelsPos[0].x * pixelsPos[2].y + (pixelsPos[2].y - pixelsPos[0].y) * p.x + (pixelsPos[0].x - pixelsPos[2].x) * p.y);
+			float t = 1 / (2 * area) * (pixelsPos[0].x * pixelsPos[1].y - pixelsPos[0].y * pixelsPos[1].x + (pixelsPos[0].y - pixelsPos[1].y) * p.x + (pixelsPos[1].x - pixelsPos[0].x) * p.y);
+
+			if ((s < 0) || (t < 0) || (s + t > 1))
+				continue;
+
+			vec2 relativePos = p / vec4(width, height, 1, 1);
+
+			vec4 color = fragmentProc(relativePos);
+			uint8_t unorm[4] = { uint8_t(color.r * 255), uint8_t(color.g * 255), uint8_t(color.b * 255), uint8_t(color.a * 255) };
+			uint32_t* dest = (uint32_t*)renderTarget->images[0]->data;
+
+			bool write = true;
+			if (renderTarget->flags & SD_FRAMEBUFFER_DEPTH_BIT)
 			{
-				int j = i == 2 ? 0 : i + 1;
-				float distance = GetDistance(pixelsPos[i], pixelsPos[j]);
-				float traversed = 0.0f;
-
-				vec2 currentPos = pixelsPos[i] + vec2(1);
-
-				while (traversed < 1.0f)
-				{
-					vec2 relativePos = currentPos / vec2(renderTarget->images[0]->width, renderTarget->images[0]->height);
-
-					vec4 color = fragmentProc(relativePos);
-					uint8_t unorm[4] = { uint8_t(color.r * 255), uint8_t(color.g * 255), uint8_t(color.b * 255), uint8_t(color.a * 255) };
-					uint32_t* dest = (uint32_t*)renderTarget->images[0]->data;
-
-					uint64_t y = renderTarget->images[0]->flags & SD_IMAGE_FLIP_Y_BIT ? renderTarget->images[0]->height - currentPos.y : currentPos.y;
-					uint64_t index = renderTarget->images[0]->width * y + uint64_t(currentPos.x);
-
-					dest[index] = *(uint32_t*)unorm;
-
-					float dis1 = (float)GetDistance(pixelsPos[i], currentPos);
-					currentPos = glm::mix(pixelsPos[i], pixelsPos[j], traversed);
-
-					traversed += distance / (renderTarget->images[0]->width * renderTarget->images[0]->height);
-				}
-			});
+				uint8_t* depthData = (uint8_t*)renderTarget->depth->data;
+				write = depthData[index] > p.z;
+			}
+			if (write) dest[index] = *(uint32_t*)unorm;	
+		}
 	}
-	for (int i = 0; i < 3; i++)
-		proc[i].get();
 }
 
 SdResult sdDraw(SdBuffer buffer)
