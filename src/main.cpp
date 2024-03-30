@@ -39,7 +39,7 @@ vec4 VertexProcessor(const void* block)
 
 vec4 FragmentProcessor(const vec2 pos)
 {
-	return vec4(1, 1, 1, 1);
+	return vec4(pos, 1, 1);
 }
 
 SdFramebuffer framebuffer = SD_NULL;
@@ -94,6 +94,13 @@ void CreateIndexBuffer()
 	memcpy(bufferData, indices, sizeof(uint16_t) * 6);
 }
 
+void CleanUp()
+{
+	sdDestroyBuffer(vertexBuffer);
+	sdDestroyBuffer(indexBuffer);
+	sdDestroyFramebuffer(framebuffer);
+}
+
 int main()
 {
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -130,10 +137,11 @@ int main()
 		timeSinceLastFrame = std::chrono::high_resolution_clock::now();
 	}
 
-	sdDestroyBuffer(vertexBuffer);
+	CleanUp();
 
 	SDL_DestroyWindowSurface(window);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+
 	return 0;
 }
