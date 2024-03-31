@@ -27,6 +27,13 @@ enum SdBufferUsage
 	SD_BUFFER_USAGE_INDEX,
 };
 
+struct SdContextCreateInfo
+{
+	uint32_t threadCount;
+};
+
+inline extern SdResult sdCreateContext(const SdContextCreateInfo* createInfo);
+
 struct SdBufferCreateInfo
 {
 	SdSize size;

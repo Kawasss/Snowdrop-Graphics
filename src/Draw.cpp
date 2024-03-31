@@ -2,8 +2,16 @@
 
 SdFramebuffer renderTarget = SD_NULL;
 
+uint32_t threadCount = 1;
+
 vec4(*vertexProc) (const void*) = nullptr;
 vec4(*fragmentProc)(const vec2) = nullptr;
+
+SdResult sdCreateContext(const SdContextCreateInfo* createInfo)
+{
+	threadCount = createInfo->threadCount;
+	return SD_SUCCESS;
+}
 
 void sdSetVertexProcessorFunction(vec4(*vertProc)(const void*))
 {
@@ -105,41 +113,50 @@ SdResult sdDraw(SdBuffer buffer)
 	return SD_SUCCESS;
 }
 
+#include <future>
 SdResult sdDrawIndexed(SdBuffer vertexBuffer, SdBuffer indexBuffer)
 {
 	SdSize bufferSize = indexBuffer->size / (indexBuffer->indexType == SD_INDEX_TYPE_16_BIT ? sizeof(uint16_t) : sizeof(uint32_t));
-	for (int i = 0; i < bufferSize; i += 3)
+	SdSize parallelSize = bufferSize / threadCount;
+	std::future<void>* proc = new std::future<void>[threadCount];
+	for (int x = 0; x < threadCount; x++)
 	{
-		void* vert0 = nullptr, *vert1 = nullptr, *vert2 = nullptr;
-		switch (indexBuffer->indexType)
-		{
-		case SD_INDEX_TYPE_16_BIT: // a lot of the same stuff here, maybe change??
-		{
-			uint16_t* data = (uint16_t*)indexBuffer->data;
-			uint16_t index0 = *(data + i);
-			uint16_t index1 = *(data + i + 1);
-			uint16_t index2 = *(data + i + 2);
+		proc[x] = std::async([=]() {
+			for (int i = parallelSize * x; i < parallelSize * x + parallelSize; i += 3)
+			{
+				void* vert0 = nullptr, * vert1 = nullptr, * vert2 = nullptr;
+				switch (indexBuffer->indexType)
+				{
+				case SD_INDEX_TYPE_16_BIT: // a lot of the same stuff here, maybe change??
+				{
+					uint16_t* data = (uint16_t*)indexBuffer->data;
+					uint16_t index0 = *(data + i);
+					uint16_t index1 = *(data + i + 1);
+					uint16_t index2 = *(data + i + 2);
 
-			vert0 = (char*)vertexBuffer->data + index0 * vertexBuffer->stride;
-			vert1 = (char*)vertexBuffer->data + index1 * vertexBuffer->stride;
-			vert2 = (char*)vertexBuffer->data + index2 * vertexBuffer->stride;
-			break;
-		}
-		case SD_INDEX_TYPE_32_BIT:
-		{
-			uint32_t* data = (uint32_t*)indexBuffer->data;
-			uint32_t index3 = *(data + i);
-			uint32_t index4 = *(data + i + 1);
-			uint32_t index5 = *(data + i + 2);
+					vert0 = (char*)vertexBuffer->data + index0 * vertexBuffer->stride;
+					vert1 = (char*)vertexBuffer->data + index1 * vertexBuffer->stride;
+					vert2 = (char*)vertexBuffer->data + index2 * vertexBuffer->stride;
+					break;
+				}
+				case SD_INDEX_TYPE_32_BIT:
+				{
+					uint32_t* data = (uint32_t*)indexBuffer->data;
+					uint32_t index3 = *(data + i);
+					uint32_t index4 = *(data + i + 1);
+					uint32_t index5 = *(data + i + 2);
 
-			vert0 = (char*)vertexBuffer->data + index3 * vertexBuffer->stride;
-			vert1 = (char*)vertexBuffer->data + index4 * vertexBuffer->stride;
-			vert2 = (char*)vertexBuffer->data + index5 * vertexBuffer->stride;
-			break;
-		}
-		}
-		Rasterize(vert0, vert1, vert2);
+					vert0 = (char*)vertexBuffer->data + index3 * vertexBuffer->stride;
+					vert1 = (char*)vertexBuffer->data + index4 * vertexBuffer->stride;
+					vert2 = (char*)vertexBuffer->data + index5 * vertexBuffer->stride;
+					break;
+				}
+				}
+				Rasterize(vert0, vert1, vert2);
+			}
+			});
 	}
-
+	for (int i = 0; i < threadCount; i++)
+		proc[i].get();
 	return SD_SUCCESS;
 }

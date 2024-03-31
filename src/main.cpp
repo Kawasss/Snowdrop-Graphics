@@ -161,6 +161,14 @@ void CreateDepthImage()
 	sdFramebufferBindImage(framebuffer, depth, SD_DEPTH_INDEX);
 }
 
+void CreateContext()
+{
+	SdContextCreateInfo createInfo{};
+	createInfo.threadCount = 12;
+
+	sdCreateContext(&createInfo);
+}
+
 void CleanUp()
 {
 	sdDestroyBuffer(vertexBuffer);
@@ -168,6 +176,7 @@ void CleanUp()
 	sdDestroyFramebuffer(framebuffer);
 }
 
+#include <iostream>
 int main()
 {
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -181,6 +190,8 @@ int main()
 
 	float frameDelta = 0;
 	auto timeSinceLastFrame = std::chrono::high_resolution_clock::now();
+
+	CreateContext();
 
 	sdSetVertexProcessorFunction(&VertexProcessor);
 	sdSetFragmentProcessorFunction(&FragmentProcessor);
@@ -208,6 +219,8 @@ int main()
 
 		frameDelta = std::chrono::duration<float, std::chrono::milliseconds::period>(std::chrono::high_resolution_clock::now() - timeSinceLastFrame).count();
 		timeSinceLastFrame = std::chrono::high_resolution_clock::now();
+
+		std::cout << frameDelta << '\n';
 	}
 
 	CleanUp();
