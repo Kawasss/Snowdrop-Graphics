@@ -31,6 +31,7 @@ float GetDistance(vec2 v1, vec2 v2)
 
 void Rasterize(void* vert0, void* vert1, void* vert2)
 {
+	memset(renderTarget->depth->data, 255, renderTarget->depth->width * renderTarget->depth->height);
 	uint32_t width = renderTarget->images[0]->width;
 	uint32_t height = renderTarget->images[0]->height;
 
@@ -69,6 +70,7 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 
 			float s = 1 / (2 * area) * (pixelsPos[0].y * pixelsPos[2].x - pixelsPos[0].x * pixelsPos[2].y + (pixelsPos[2].y - pixelsPos[0].y) * p.x + (pixelsPos[0].x - pixelsPos[2].x) * p.y);
 			float t = 1 / (2 * area) * (pixelsPos[0].x * pixelsPos[1].y - pixelsPos[0].y * pixelsPos[1].x + (pixelsPos[0].y - pixelsPos[1].y) * p.x + (pixelsPos[1].x - pixelsPos[0].x) * p.y);
+			float z = 1 - s - t;
 
 			if ((s < 0) || (t < 0) || (s + t > 1))
 				continue;
@@ -83,7 +85,11 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 			if (renderTarget->flags & SD_FRAMEBUFFER_DEPTH_BIT)
 			{
 				uint8_t* depthData = (uint8_t*)renderTarget->depth->data;
-				write = depthData[index] > p.z;
+				float depth = relPixels[0].z * s + relPixels[1].z * t + relPixels[2].z * z;
+				uint8_t convert = -depth * 255;
+				write = depthData[index] >= convert;
+				if (write)
+					depthData[index] = convert;
 			}
 			if (write) dest[index] = *(uint32_t*)unorm;	
 		}

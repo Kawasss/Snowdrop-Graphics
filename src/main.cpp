@@ -26,6 +26,7 @@ void ProcessSDLEvents(SDL_Window* window)
 	}
 }
 
+float id = 0.0f;
 float rotation = 0.0f;
 vec4 VertexProcessor(const void* block)
 {
@@ -34,12 +35,13 @@ vec4 VertexProcessor(const void* block)
 	if (rotation > 360) rotation = 0;
 	mat4 rotMatrix = glm::rotate(glm::mat4(1), glm::radians(rotation), glm::vec3(1, 0, 0));
 
+	id += 1 / 36.0f;
 	return rotMatrix * vec4(*vert, 1);
 }
 
 vec4 FragmentProcessor(const vec2 pos)
 {
-	return vec4(pos, 1, 1);
+	return vec4(id, 1, 1, 1);
 }
 
 SdFramebuffer framebuffer = SD_NULL;
