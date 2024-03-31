@@ -9,6 +9,7 @@
 bool close = false;
 SDL_Surface* surface;
 
+vec2 mouseMotion;
 void ProcessSDLEvents(SDL_Window* window)
 {
 	SDL_Event sdlEvent;
@@ -22,21 +23,24 @@ void ProcessSDLEvents(SDL_Window* window)
 		case SDL_WINDOWEVENT:
 			close = sdlEvent.window.type == SDL_WINDOWEVENT_CLOSE;
 			break;
+		case SDL_MOUSEMOTION:
+			mouseMotion += vec2(sdlEvent.motion.xrel, sdlEvent.motion.yrel);
 		}
 	}
 }
 
 float id = 0.0f;
-float rotation = 0.0f;
+vec2 rotation;
+mat4 view, proj, rot;
 vec4 VertexProcessor(const void* block)
 {
 	vec3* vert = (vec3*)block;
 
-	if (rotation > 360) rotation = 0;
-	mat4 rotMatrix = glm::rotate(glm::mat4(1), glm::radians(rotation), glm::vec3(1, 0, 0));
+	if (rotation.x > 360) rotation.x = 0;
+	if (rotation.y > 360) rotation.y = 0;
 
 	id += 1 / 36.0f;
-	return rotMatrix * vec4(*vert, 1);
+	return /*proj * view * */rot * vec4(*vert, 1);
 }
 
 vec4 FragmentProcessor(const vec2 pos)
@@ -195,7 +199,12 @@ int main()
 		SDL_UnlockSurface(surface);
 		SDL_UpdateWindowSurface(window);
 
-		rotation += frameDelta * 0.1f;
+		rotation += mouseMotion;
+		rot = /*glm::rotate(glm::mat4(1), glm::radians(rotation.x), glm::vec3(1, 0, 0)) * */glm::rotate(glm::mat4(1), glm::radians(rotation.y), glm::vec3(0, 1, 0));
+		view = glm::lookAt(vec3(0), vec3(1, 0, 0), vec3(0, 1, 0));
+		proj = glm::perspective(glm::radians(90.0f), (float)surface->w / (float)surface->h, 0.01f, 1000.0f);
+		proj[1][1] *= -1;
+		mouseMotion = vec2(0);
 
 		frameDelta = std::chrono::duration<float, std::chrono::milliseconds::period>(std::chrono::high_resolution_clock::now() - timeSinceLastFrame).count();
 		timeSinceLastFrame = std::chrono::high_resolution_clock::now();

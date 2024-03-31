@@ -1,5 +1,4 @@
 #include "snowdrop.h"
-#include <future>
 
 SdFramebuffer renderTarget = SD_NULL;
 
