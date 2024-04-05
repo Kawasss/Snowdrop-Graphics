@@ -52,7 +52,7 @@ struct SdBuffer_t
 };
 typedef SdBuffer_t* SdBuffer;
 
-inline extern SdResult sdCreateBuffer(const SdBufferCreateInfo* createInfo, SdBuffer* buffer);
+inline extern SdResult sdCreateBuffer(const SdBufferCreateInfo* createInfo, SdBuffer* pBuffer);
 inline extern void     sdDestroyBuffer(SdBuffer buffer);
 inline extern void*    sdAccessBuffer(SdBuffer buffer);
 
@@ -96,10 +96,10 @@ struct SdImage_t
 };
 typedef SdImage_t* SdImage;
 
-inline extern SdResult sdCreateImage(const SdImageCreateInfo* createInfo, SdImage* image);
+inline extern SdResult sdCreateImage(const SdImageCreateInfo* createInfo, SdImage* pImage);
 inline extern void     sdDestroyImage(SdImage image);
 inline extern void*    sdAccessImage(SdImage image);
-inline extern SdResult sdImportImage(const SdImageImportInfo* importInfo, SdImage* image);
+inline extern SdResult sdImportImage(const SdImageImportInfo* importInfo, SdImage* pImage);
 
 enum SdFramebufferFlags : SdFlags
 {
@@ -121,7 +121,7 @@ struct SdFramebuffer_t
 };
 typedef SdFramebuffer_t* SdFramebuffer;
 
-inline extern SdResult sdCreateFramebuffer(const SdFramebufferCreateInfo* createInfo, SdFramebuffer* framebuffer);
+inline extern SdResult sdCreateFramebuffer(const SdFramebufferCreateInfo* createInfo, SdFramebuffer* pFramebuffer);
 inline extern void     sdDestroyFramebuffer(SdFramebuffer framebuffer);
 inline extern SdResult sdFramebufferBindImage(SdFramebuffer framebuffer, SdImage image, int index);
 
@@ -161,7 +161,7 @@ struct SdShaderGroup_t
 };
 typedef SdShaderGroup_t* SdShaderGroup;
 
-inline extern SdResult sdCreateShaderGroup(const SdShaderGroupCreateInfo* createInfo, SdShaderGroup* shaderGroup);
+inline extern SdResult sdCreateShaderGroup(const SdShaderGroupCreateInfo* createInfo, SdShaderGroup* pShaderGroup);
 inline extern void sdBindShaderGroup(SdShaderGroup shaderGroup);
 inline extern void sdDestroyShaderGroup(SdShaderGroup shaderGroup);
 
