@@ -127,10 +127,10 @@ inline extern SdResult sdFramebufferBindImage(SdFramebuffer framebuffer, SdImage
 
 enum SdIOType
 {
+	SD_IO_FLOAT,
+	SD_IO_VEC2,
 	SD_IO_VEC3,
 	SD_IO_VEC4,
-	SD_IO_FLOAT,
-	SD_IO_INT
 };
 
 struct SdIOVariableDescription

@@ -49,6 +49,41 @@ SdResult sdBindFramebuffer(SdFramebuffer framebuffer)
 	return SD_SUCCESS;
 }
 
+void InterpolateData(void* data, SdIOType type, float s, float t, float p)
+{
+	switch (type)
+	{
+	case SD_IO_FLOAT:
+	{
+		float* pFloat = (float*)data;
+		float val = *pFloat;
+		*pFloat = val * s + val * t + val * p;
+		break;
+	}
+	case SD_IO_VEC2:
+	{
+		vec2* pVec2 = (vec2*)data;
+		vec2 vec2Val = *pVec2;
+		*pVec2 = vec2Val * s + vec2Val * t + vec2Val * p;
+		break;
+	}
+	case SD_IO_VEC3:
+	{
+		vec3* pVec3 = (vec3*)data;
+		vec3 vec3Val = *pVec3;
+		*pVec3 = vec3Val * s + vec3Val * t + vec3Val * p;
+		break;
+	}
+	case SD_IO_VEC4:
+	{
+		vec3* pVec4 = (vec3*)data;
+		vec3 vec4Val = *pVec4;
+		*pVec4 = vec4Val * s + vec4Val * t + vec4Val * p;
+		break;
+	}	
+	}
+}
+
 float GetDistance(vec2 v1, vec2 v2)
 {
 	vec2 distance = glm::abs(v2 - v1);
@@ -63,9 +98,9 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 	uint32_t height = renderTarget->images[0]->height;
 
 	vec4 relPixels[3]{};
-	relPixels[0] = currentShader->vertProc(vert0, nullptr);
-	relPixels[1] = currentShader->vertProc(vert1, nullptr);
-	relPixels[2] = currentShader->vertProc(vert2, nullptr);
+	relPixels[0] = currentShader->vertProc(vert0, currentShader->ioData);
+	relPixels[1] = currentShader->vertProc(vert1, currentShader->ioData);
+	relPixels[2] = currentShader->vertProc(vert2, currentShader->ioData);
 
 	vec4 pixelsPos[3]{};
 	vec2 min = vec2(-1), max = vec2(0);
@@ -104,7 +139,10 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 
 			vec2 relativePos = p / vec4(width, height, 1, 1);
 
-			vec4 color = currentShader->fragProc(relativePos, nullptr);
+			for (int i = 0; i < currentShader->varDescriptionCount; i++)
+				InterpolateData((char*)currentShader->ioData + currentShader->varDescriptions[i].offset, currentShader->varDescriptions[i].type, s, t, z);
+
+			vec4 color = currentShader->fragProc(relativePos, currentShader->ioData);
 			uint8_t unorm[4] = { uint8_t(color.r * 255), uint8_t(color.g * 255), uint8_t(color.b * 255), uint8_t(color.a * 255) };
 			uint32_t* dest = (uint32_t*)renderTarget->images[0]->data;
 
@@ -113,7 +151,7 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 			{
 				uint8_t* depthData = (uint8_t*)renderTarget->depth->data;
 				float depth = relPixels[0].z * s + relPixels[1].z * t + relPixels[2].z * z;
-				uint8_t convert = -depth * 255;
+				uint8_t convert = uint8_t(-depth * 255);
 				write = depthData[index] >= convert;
 				if (write)
 					depthData[index] = convert;
