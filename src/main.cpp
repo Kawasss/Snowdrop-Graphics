@@ -9,6 +9,18 @@
 bool close = false;
 SDL_Surface* surface;
 
+struct Vertex
+{
+	float posx, posy, posz, norx, nory, norz, uvx, uvy;
+
+	union
+	{
+		vec3 pos;
+		vec3 normal;
+		vec2 uv;
+	};
+};
+
 vec2 mouseMotion;
 void ProcessSDLEvents(SDL_Window* window)
 {
@@ -75,49 +87,50 @@ void CreateFramebuffer()
 void CreateVertexBuffer()
 {
 	constexpr int size = 36;
-	vec3 vertices[size] =
+	Vertex vertices[size] =
 	{
-		{-.5f, -.5f, -.5f },
-		{ .5f,  .5f, -.5f },
-		{ .5f, -.5f, -.5f },
-		{ .5f,  .5f, -.5f },
-		{ -.5f, -.5f, -.5f },
-		{ -.5f,  .5f, -.5f },
+		// back face
+		{ -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f }, // bottom-left
+		{  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f }, // top-right
+		{  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f }, // bottom-right         
+		{  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f }, // top-right
+		{ -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f }, // bottom-left
+		{ -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f }, // top-left
 		// front face
-		{ -.5f, -.5f,  .5f },
-		{ .5f, -.5f,  .5f },
-		{ .5f,  .5f,  .5f },
-		{ .5f,  .5f,  .5f },
-		{ -.5f,  .5f,  .5f },
-		{ -.5f, -.5f,  .5f },
+		{ -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f }, // bottom-left
+		{  1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f }, // bottom-right
+		{  1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f }, // top-right
+		{  1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f }, // top-right
+		{ -1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f }, // top-left
+		{ -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f }, // bottom-left
 		// left face
-		{ -.5f,  .5f,  .5f },
-		{ -.5f,  .5f, -.5f },
-		{ -.5f, -.5f, -.5f },
-		{ -.5f, -.5f, -.5f },
-		{ -.5f, -.5f,  .5f },
-		{ -.5f,  .5f,  .5f },
+		{ -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f }, // top-right
+		{ -1.0f,  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f }, // top-left
+		{ -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f }, // bottom-left
+		{ -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f }, // bottom-left
+		{ -1.0f, -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f }, // bottom-right
+		{ -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f }, // top-right
 		// right face
-		{ .5f,  .5f,  .5f },
-		{ .5f, -.5f, -.5f },
-		{ .5f,  .5f, -.5f },
-		{ .5f, -.5f, -.5f },
-		{ .5f,  .5f,  .5f },
-		{ .5f, -.5f,  .5f },
+		{  1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f }, // top-left
+		{  1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f }, // bottom-right
+		{  1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f }, // top-right         
+		{  1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f }, // bottom-right
+		{  1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f }, // top-left
+		{  1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f }, // bottom-left     
 		// bottom face
-		{ -.5f, -.5f, -.5f },
-		{ .5f, -.5f, -.5f },
-		{ .5f, -.5f,  .5f },
-		{ .5f, -.5f,  .5f },
-		{ -.5f, -.5f,  .5f },
-		{ -.5f, -.5f, -.5f },
+		{ -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f }, // top-right
+		{  1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f }, // top-left
+		{  1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f }, // bottom-left
+		{  1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f }, // bottom-left
+		{ -1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f }, // bottom-right
+		{ -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f }, // top-right
 		// top face
-		{ -.5f,  .5f, -.5f },
-		{ .5f,  .5f , .5f },
-		{ .5f,  .5f, -.5f },
-		{ .5f,  .5f,  .5f },
-		{ -.5f,  .5f, -.5f },
-		{ -.5f,  .5f,  .5f }
+		{ -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f }, // top-left
+		{  1.0f,  1.0f , 1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f }, // bottom-right
+		{  1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f }, // top-right     
+		{  1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f }, // bottom-right
+		{ -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f }, // top-left
+		{ -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f }  // bottom-left        
 	};
 
 	SdBufferCreateInfo createInfo{};
