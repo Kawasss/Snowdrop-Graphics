@@ -29,7 +29,7 @@ SdResult sdCreateBuffer(const SdBufferCreateInfo* createInfo, SdBuffer* buffer)
 
 void sdDestroyBuffer(SdBuffer buffer)
 {
-	delete buffer->data;
+	delete[] buffer->data;
 	delete buffer;
 }
 

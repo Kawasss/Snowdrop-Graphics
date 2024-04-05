@@ -30,7 +30,7 @@ SdResult sdCreateImage(const SdImageCreateInfo* createInfo, SdImage* image)
 void sdDestroyImage(SdImage image)
 {
 	if (!(image->flags & SD_IMAGE_EXTERNAL_BIT))
-		delete image->data;
+		delete[] image->data;
 	delete image;
 }
 
@@ -72,6 +72,7 @@ void sdDestroyFramebuffer(SdFramebuffer framebuffer)
 	for (uint32_t i = 0; i < framebuffer->imageCount; i++)
 		if (framebuffer->images[i]) sdDestroyImage(framebuffer->images[i]); // this assumes ownership of the image
 	if (framebuffer->depth) sdDestroyImage(framebuffer->depth);
+	if (framebuffer->imageCount > 0) delete[] framebuffer->images;
 	delete framebuffer;
 }
 

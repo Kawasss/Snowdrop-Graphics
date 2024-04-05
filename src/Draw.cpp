@@ -38,8 +38,8 @@ void sdBindShaderGroup(SdShaderGroup shaderGroup)
 
 void sdDestroyShaderGroup(SdShaderGroup shaderGroup)
 {
-	delete shaderGroup->ioData;
-	delete shaderGroup->varDescriptions;
+	delete[] shaderGroup->ioData;
+	delete[] shaderGroup->varDescriptions;
 	delete shaderGroup;
 }
 

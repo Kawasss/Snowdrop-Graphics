@@ -168,7 +168,7 @@ void CreateDepthImage()
 	SdImageCreateInfo createInfo{};
 	createInfo.format = SD_FORMAT_R8_UNORM;
 	createInfo.width = 800;
-	createInfo.height = 600;
+	createInfo.height = 800; // weird bug here
 	
 	SdImage depth = SD_NULL;
 	sdCreateImage(&createInfo, &depth);
