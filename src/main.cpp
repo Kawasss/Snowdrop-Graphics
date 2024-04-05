@@ -32,7 +32,7 @@ void ProcessSDLEvents(SDL_Window* window)
 float id = 0.0f;
 vec2 rotation;
 mat4 view, proj, rot;
-vec4 VertexProcessor(const void* block)
+vec4 VertexProcessor(const void* block, void* output)
 {
 	vec3* vert = (vec3*)block;
 
@@ -43,7 +43,7 @@ vec4 VertexProcessor(const void* block)
 	return /*proj * view * */rot * vec4(*vert, 1);
 }
 
-vec4 FragmentProcessor(const vec2 pos)
+vec4 FragmentProcessor(const vec2 pos, const void* input)
 {
 	return vec4(id, 1, 1, 1);
 }
@@ -51,6 +51,7 @@ vec4 FragmentProcessor(const vec2 pos)
 SdFramebuffer framebuffer = SD_NULL;
 SdBuffer vertexBuffer = SD_NULL;
 SdBuffer indexBuffer = SD_NULL;
+SdShaderGroup shader = SD_NULL;
 
 void CreateFramebuffer()
 {
@@ -161,6 +162,18 @@ void CreateDepthImage()
 	sdFramebufferBindImage(framebuffer, depth, SD_DEPTH_INDEX);
 }
 
+void CreateShaderGroup()
+{
+	SdShaderGroupCreateInfo createInfo{};
+	createInfo.fragmentProcessor = &FragmentProcessor;
+	createInfo.vertexProcessor = &VertexProcessor;
+	createInfo.ioVarSize = 0;
+
+	sdCreateShaderGroup(&createInfo, &shader);
+
+	sdBindShaderGroup(shader);
+}
+
 void CreateContext()
 {
 	SdContextCreateInfo createInfo{};
@@ -171,6 +184,7 @@ void CreateContext()
 
 void CleanUp()
 {
+	sdDestroyShaderGroup(shader);
 	sdDestroyBuffer(vertexBuffer);
 	sdDestroyBuffer(indexBuffer);
 	sdDestroyFramebuffer(framebuffer);
@@ -193,9 +207,7 @@ int main()
 
 	CreateContext();
 
-	sdSetVertexProcessorFunction(&VertexProcessor);
-	sdSetFragmentProcessorFunction(&FragmentProcessor);
-
+	CreateShaderGroup();
 	CreateVertexBuffer();
 	CreateIndexBuffer();
 	CreateFramebuffer();
@@ -211,7 +223,7 @@ int main()
 		SDL_UpdateWindowSurface(window);
 
 		rotation += mouseMotion;
-		rot = /*glm::rotate(glm::mat4(1), glm::radians(rotation.x), glm::vec3(1, 0, 0)) * */glm::rotate(glm::mat4(1), glm::radians(rotation.y), glm::vec3(0, 1, 0));
+		rot = /*glm::rotate(glm::mat4(1), glm::radians(rotation.x), glm::vec3(1, 0, 0)) * */glm::rotate(glm::mat4(1), glm::radians(rotation.x), glm::vec3(0, 1, 0));
 		view = glm::lookAt(vec3(0), vec3(1, 0, 0), vec3(0, 1, 0));
 		proj = glm::perspective(glm::radians(90.0f), (float)surface->w / (float)surface->h, 0.01f, 1000.0f);
 		proj[1][1] *= -1;

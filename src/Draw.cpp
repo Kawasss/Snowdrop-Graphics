@@ -1,11 +1,9 @@
 #include "snowdrop.h"
 
 SdFramebuffer renderTarget = SD_NULL;
+SdShaderGroup currentShader = SD_NULL;
 
 uint32_t threadCount = 1;
-
-vec4(*vertexProc) (const void*) = nullptr;
-vec4(*fragmentProc)(const vec2) = nullptr;
 
 SdResult sdCreateContext(const SdContextCreateInfo* createInfo)
 {
@@ -13,14 +11,36 @@ SdResult sdCreateContext(const SdContextCreateInfo* createInfo)
 	return SD_SUCCESS;
 }
 
-void sdSetVertexProcessorFunction(vec4(*vertProc)(const void*))
+SdResult sdCreateShaderGroup(const SdShaderGroupCreateInfo* createInfo, SdShaderGroup* shaderGroup)
 {
-	vertexProc = vertProc;
+	SdShaderGroup_t* ptr = new SdShaderGroup_t();
+
+	ptr->fragProc = createInfo->fragmentProcessor;
+	ptr->vertProc = createInfo->vertexProcessor;
+	ptr->ioVarSize = createInfo->ioVarSize;
+	if (createInfo->ioVarSize > 0)
+		ptr->ioData = new uint8_t[createInfo->ioVarSize];
+	ptr->varDescriptionCount = createInfo->varDescriptionCount;
+	if (createInfo->varDescriptionCount > 0 && createInfo->ioVarSize > 0)
+	{
+		ptr->varDescriptions = new SdIOVariableDescription[createInfo->varDescriptionCount];
+		memcpy(ptr->varDescriptions, createInfo->varDescriptions, sizeof(SdIOVariableDescription) * createInfo->varDescriptionCount);
+	}
+	
+	*shaderGroup = ptr;
+	return SD_SUCCESS;
 }
 
-void sdSetFragmentProcessorFunction(vec4(*fragProc)(const vec2))
+void sdBindShaderGroup(SdShaderGroup shaderGroup)
 {
-	fragmentProc = fragProc;
+	currentShader = shaderGroup;
+}
+
+void sdDestroyShaderGroup(SdShaderGroup shaderGroup)
+{
+	delete shaderGroup->ioData;
+	delete shaderGroup->varDescriptions;
+	delete shaderGroup;
 }
 
 SdResult sdBindFramebuffer(SdFramebuffer framebuffer)
@@ -43,9 +63,9 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 	uint32_t height = renderTarget->images[0]->height;
 
 	vec4 relPixels[3]{};
-	relPixels[0] = vertexProc(vert0);
-	relPixels[1] = vertexProc(vert1);
-	relPixels[2] = vertexProc(vert2);
+	relPixels[0] = currentShader->vertProc(vert0, nullptr);
+	relPixels[1] = currentShader->vertProc(vert1, nullptr);
+	relPixels[2] = currentShader->vertProc(vert2, nullptr);
 
 	vec4 pixelsPos[3]{};
 	vec2 min = vec2(-1), max = vec2(0);
@@ -84,7 +104,7 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 
 			vec2 relativePos = p / vec4(width, height, 1, 1);
 
-			vec4 color = fragmentProc(relativePos);
+			vec4 color = currentShader->fragProc(relativePos, nullptr);
 			uint8_t unorm[4] = { uint8_t(color.r * 255), uint8_t(color.g * 255), uint8_t(color.b * 255), uint8_t(color.a * 255) };
 			uint32_t* dest = (uint32_t*)renderTarget->images[0]->data;
 

@@ -125,11 +125,48 @@ inline extern SdResult sdCreateFramebuffer(const SdFramebufferCreateInfo* create
 inline extern void     sdDestroyFramebuffer(SdFramebuffer framebuffer);
 inline extern SdResult sdFramebufferBindImage(SdFramebuffer framebuffer, SdImage image, int index);
 
+enum SdIOType
+{
+	SD_IO_VEC3,
+	SD_IO_VEC4,
+	SD_IO_FLOAT,
+	SD_IO_INT
+};
+
+struct SdIOVariableDescription
+{
+	SdIOType type;
+	uint32_t offset;
+};
+
+struct SdShaderGroupCreateInfo
+{
+	vec4(*vertexProcessor)(const void*, void*);
+	vec4(*fragmentProcessor)(const vec2, const void*);
+
+	uint32_t ioVarSize;
+	uint32_t varDescriptionCount;
+	const SdIOVariableDescription* varDescriptions;
+};
+
+struct SdShaderGroup_t
+{
+	void* ioData;
+	vec4(*vertProc)(const void*, void*);
+	vec4(*fragProc)(const vec2, const void*);
+
+	uint32_t ioVarSize;
+	uint32_t varDescriptionCount;
+	SdIOVariableDescription* varDescriptions;
+};
+typedef SdShaderGroup_t* SdShaderGroup;
+
+inline extern SdResult sdCreateShaderGroup(const SdShaderGroupCreateInfo* createInfo, SdShaderGroup* shaderGroup);
+inline extern void sdBindShaderGroup(SdShaderGroup shaderGroup);
+inline extern void sdDestroyShaderGroup(SdShaderGroup shaderGroup);
+
 inline extern SdResult sdDraw(SdBuffer vertexBuffer);
 inline extern SdResult sdDrawIndexed(SdBuffer vertexBuffer, SdBuffer indexBuffer);
 inline extern SdResult sdBindFramebuffer(SdFramebuffer framebuffer);
-
-inline extern void sdSetVertexProcessorFunction(vec4 (*vertProc)(const void*));
-inline extern void sdSetFragmentProcessorFunction(vec4(*fragProc)(const vec2));
 
 inline extern vec4 sdTexture(SdImage image, vec2 uv);
