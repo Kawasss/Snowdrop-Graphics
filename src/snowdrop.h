@@ -151,7 +151,6 @@ struct SdShaderGroupCreateInfo
 
 struct SdShaderGroup_t
 {
-	void* ioData;
 	vec4(*vertProc)(const void*, void*);
 	vec4(*fragProc)(const vec2, const void*);
 

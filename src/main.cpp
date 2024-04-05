@@ -9,16 +9,23 @@
 bool close = false;
 SDL_Surface* surface;
 
-struct Vertex
+union Vertex
 {
-	float posx, posy, posz, norx, nory, norz, uvx, uvy;
+	Vertex(float v0, float v1, float v2, float v3, float v4, float v5, float v6, float v7) : pos(v0, v1, v2), normal(v3, v4, v5), uv(v6, v7) {}
 
-	union
+	struct
 	{
 		vec3 pos;
 		vec3 normal;
 		vec2 uv;
 	};
+	float data[8];
+};
+
+struct ShaderData
+{
+	vec3 normal;
+	vec2 uv;
 };
 
 vec2 mouseMotion;
@@ -46,18 +53,22 @@ vec2 rotation;
 mat4 view, proj, rot;
 vec4 VertexProcessor(const void* block, void* output)
 {
-	vec3* vert = (vec3*)block;
+	Vertex* vert = (Vertex*)block;
+	ShaderData* out = (ShaderData*)output;
+	out->normal = vert->normal;
+	out->uv = vert->uv;
 
 	if (rotation.x > 360) rotation.x = 0;
 	if (rotation.y > 360) rotation.y = 0;
 
 	id += 1 / 36.0f;
-	return /*proj * view * */rot * vec4(*vert, 1);
+	return /*proj * view * */rot * vec4(vert->pos, 1);
 }
 
 vec4 FragmentProcessor(const vec2 pos, const void* input)
 {
-	return vec4(id, 1, 1, 1);
+	ShaderData* in = (ShaderData*)input;
+	return vec4(in->uv, 0, 1);
 }
 
 SdFramebuffer framebuffer = SD_NULL;
@@ -90,47 +101,47 @@ void CreateVertexBuffer()
 	Vertex vertices[size] =
 	{
 		// back face
-		{ -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f }, // bottom-left
-		{  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f }, // top-right
-		{  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f }, // bottom-right         
-		{  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f }, // top-right
-		{ -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f }, // bottom-left
-		{ -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f }, // top-left
+		{ -.5f, -.5f, -.5f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f }, // bottom-left
+		{  .5f,  .5f, -.5f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f }, // top-right
+		{  .5f, -.5f, -.5f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f }, // bottom-right         
+		{  .5f,  .5f, -.5f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f }, // top-right
+		{ -.5f, -.5f, -.5f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f }, // bottom-left
+		{ -.5f,  .5f, -.5f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f }, // top-left
 		// front face
-		{ -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f }, // bottom-left
-		{  1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f }, // bottom-right
-		{  1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f }, // top-right
-		{  1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f }, // top-right
-		{ -1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f }, // top-left
-		{ -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f }, // bottom-left
+		{ -.5f, -.5f,  .5f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f }, // bottom-left
+		{  .5f, -.5f,  .5f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f }, // bottom-right
+		{  .5f,  .5f,  .5f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f }, // top-right
+		{  .5f,  .5f,  .5f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f }, // top-right
+		{ -.5f,  .5f,  .5f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f }, // top-left
+		{ -.5f, -.5f,  .5f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f }, // bottom-left
 		// left face
-		{ -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f }, // top-right
-		{ -1.0f,  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f }, // top-left
-		{ -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f }, // bottom-left
-		{ -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f }, // bottom-left
-		{ -1.0f, -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f }, // bottom-right
-		{ -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f }, // top-right
+		{ -.5f,  .5f,  .5f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f }, // top-right
+		{ -.5f,  .5f, -.5f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f }, // top-left
+		{ -.5f, -.5f, -.5f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f }, // bottom-left
+		{ -.5f, -.5f, -.5f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f }, // bottom-left
+		{ -.5f, -.5f,  .5f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f }, // bottom-right
+		{ -.5f,  .5f,  .5f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f }, // top-right
 		// right face
-		{  1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f }, // top-left
-		{  1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f }, // bottom-right
-		{  1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f }, // top-right         
-		{  1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f }, // bottom-right
-		{  1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f }, // top-left
-		{  1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f }, // bottom-left     
+		{  .5f,  .5f,  .5f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f }, // top-left
+		{  .5f, -.5f, -.5f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f }, // bottom-right
+		{  .5f,  .5f, -.5f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f }, // top-right         
+		{  .5f, -.5f, -.5f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f }, // bottom-right
+		{  .5f,  .5f,  .5f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f }, // top-left
+		{  .5f, -.5f,  .5f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f }, // bottom-left     
 		// bottom face
-		{ -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f }, // top-right
-		{  1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f }, // top-left
-		{  1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f }, // bottom-left
-		{  1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f }, // bottom-left
-		{ -1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f }, // bottom-right
-		{ -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f }, // top-right
+		{ -.5f, -.5f, -.5f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f }, // top-right
+		{  .5f, -.5f, -.5f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f }, // top-left
+		{  .5f, -.5f,  .5f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f }, // bottom-left
+		{  .5f, -.5f,  .5f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f }, // bottom-left
+		{ -.5f, -.5f,  .5f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f }, // bottom-right
+		{ -.5f, -.5f, -.5f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f }, // top-right
 		// top face
-		{ -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f }, // top-left
-		{  1.0f,  1.0f , 1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f }, // bottom-right
-		{  1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f }, // top-right     
-		{  1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f }, // bottom-right
-		{ -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f }, // top-left
-		{ -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f }  // bottom-left        
+		{ -.5f,  .5f, -.5f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f }, // top-left
+		{  .5f,  .5f,  .5f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f }, // bottom-right
+		{  .5f,  .5f, -.5f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f }, // top-right     
+		{  .5f,  .5f,  .5f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f }, // bottom-right
+		{ -.5f,  .5f, -.5f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f }, // top-left
+		{ -.5f,  .5f,  .5f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f }  // bottom-left        
 	};
 
 	SdBufferCreateInfo createInfo{};
@@ -177,10 +188,18 @@ void CreateDepthImage()
 
 void CreateShaderGroup()
 {
+	SdIOVariableDescription varDesc[2]{};
+	varDesc[0].type = SD_IO_VEC3;
+	varDesc[0].offset = offsetof(ShaderData, ShaderData::normal);
+	varDesc[1].type = SD_IO_VEC2;
+	varDesc[1].offset = offsetof(ShaderData, ShaderData::uv);
+
 	SdShaderGroupCreateInfo createInfo{};
 	createInfo.fragmentProcessor = &FragmentProcessor;
 	createInfo.vertexProcessor = &VertexProcessor;
-	createInfo.ioVarSize = 0;
+	createInfo.ioVarSize = sizeof(ShaderData);
+	createInfo.varDescriptionCount = 2;
+	createInfo.varDescriptions = varDesc;
 
 	sdCreateShaderGroup(&createInfo, &shader);
 

@@ -18,8 +18,6 @@ SdResult sdCreateShaderGroup(const SdShaderGroupCreateInfo* createInfo, SdShader
 	ptr->fragProc = createInfo->fragmentProcessor;
 	ptr->vertProc = createInfo->vertexProcessor;
 	ptr->ioVarSize = createInfo->ioVarSize;
-	if (createInfo->ioVarSize > 0)
-		ptr->ioData = new uint8_t[createInfo->ioVarSize];
 	ptr->varDescriptionCount = createInfo->varDescriptionCount;
 	if (createInfo->varDescriptionCount > 0 && createInfo->ioVarSize > 0)
 	{
@@ -38,7 +36,6 @@ void sdBindShaderGroup(SdShaderGroup shaderGroup)
 
 void sdDestroyShaderGroup(SdShaderGroup shaderGroup)
 {
-	delete[] shaderGroup->ioData;
 	delete[] shaderGroup->varDescriptions;
 	delete shaderGroup;
 }
@@ -49,36 +46,28 @@ SdResult sdBindFramebuffer(SdFramebuffer framebuffer)
 	return SD_SUCCESS;
 }
 
-void InterpolateData(void* data, SdIOType type, float s, float t, float p)
+void InterpolateData(void* data0, void* data1, void* data2, void* result, SdIOType type, float s, float t, float p)
 {
 	switch (type)
 	{
 	case SD_IO_FLOAT:
 	{
-		float* pFloat = (float*)data;
-		float val = *pFloat;
-		*pFloat = val * s + val * t + val * p;
+		*(float*)result = *(float*)data0 * s + *(float*)data1 * t + *(float*)data2 * p;
 		break;
 	}
 	case SD_IO_VEC2:
 	{
-		vec2* pVec2 = (vec2*)data;
-		vec2 vec2Val = *pVec2;
-		*pVec2 = vec2Val * s + vec2Val * t + vec2Val * p;
+		*(vec2*)result = *(vec2*)data0 * s + *(vec2*)data1 * t + *(vec2*)data2 * p;
 		break;
 	}
 	case SD_IO_VEC3:
 	{
-		vec3* pVec3 = (vec3*)data;
-		vec3 vec3Val = *pVec3;
-		*pVec3 = vec3Val * s + vec3Val * t + vec3Val * p;
+		*(vec3*)result = *(vec3*)data0 * s + *(vec3*)data0 * t + *(vec3*)data0 * p;
 		break;
 	}
 	case SD_IO_VEC4:
 	{
-		vec3* pVec4 = (vec3*)data;
-		vec3 vec4Val = *pVec4;
-		*pVec4 = vec4Val * s + vec4Val * t + vec4Val * p;
+		*(vec4*)result = *(vec4*)data0 * s + *(vec4*)data1 * t + *(vec4*)data2 * p;
 		break;
 	}	
 	}
@@ -97,10 +86,15 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 	uint32_t width = renderTarget->images[0]->width;
 	uint32_t height = renderTarget->images[0]->height;
 
+	uint8_t* ioData[4]{}; // 3 for vertex calls, 4 is for the result
+	if (currentShader->ioVarSize > 0)
+		for (int i = 0; i < 4; i++)
+			ioData[i] = new uint8_t[currentShader->ioVarSize]; // maybe optimize by making one request for memory instead of 4?
+
 	vec4 relPixels[3]{};
-	relPixels[0] = currentShader->vertProc(vert0, currentShader->ioData);
-	relPixels[1] = currentShader->vertProc(vert1, currentShader->ioData);
-	relPixels[2] = currentShader->vertProc(vert2, currentShader->ioData);
+	relPixels[0] = currentShader->vertProc(vert0, ioData[0]);
+	relPixels[1] = currentShader->vertProc(vert1, ioData[1]);
+	relPixels[2] = currentShader->vertProc(vert2, ioData[2]);
 
 	vec4 pixelsPos[3]{};
 	vec2 min = vec2(-1), max = vec2(0);
@@ -118,12 +112,17 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 		min.y = pixelsPos[i].y < min.y ? pixelsPos[i].y : min.y;
 	}
 	float area = 0.5f * (pixelsPos[1].y * pixelsPos[2].x + pixelsPos[0].y * (-pixelsPos[1].x + pixelsPos[2].x) + pixelsPos[0].x * (pixelsPos[1].y - pixelsPos[2].y) + pixelsPos[1].x * pixelsPos[2].y);
-	if (area <= 0) return; 
+	if (area <= 0)
+	{
+		for (int i = 0; i < 4; i++)
+			delete[] ioData[i];
+		return;
+	}
 
 	bool inv = renderTarget->images[0]->flags & SD_IMAGE_FLIP_Y_BIT;
-	for (uint32_t y = min.y; y < max.y; y++)
+	for (uint32_t y = (uint32_t)min.y; y < (uint32_t)max.y; y++)
 	{
-		for (uint32_t x = min.x; x <= max.x; x++)
+		for (uint32_t x = (uint32_t)min.x; x <= (uint32_t)max.x; x++)
 		{
 			uint64_t index = width * (inv ? height - y : y) + x;
 			if (index > width * height) continue;
@@ -140,9 +139,9 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 			vec2 relativePos = p / vec4(width, height, 1, 1);
 
 			for (int i = 0; i < currentShader->varDescriptionCount; i++)
-				InterpolateData((char*)currentShader->ioData + currentShader->varDescriptions[i].offset, currentShader->varDescriptions[i].type, s, t, z);
+				InterpolateData((char*)ioData[0] + currentShader->varDescriptions[i].offset, (char*)ioData[1] + currentShader->varDescriptions[i].offset, (char*)ioData[2] + currentShader->varDescriptions[i].offset, (char*)ioData[3] + currentShader->varDescriptions[i].offset, currentShader->varDescriptions[i].type, s, t, z);
 
-			vec4 color = currentShader->fragProc(relativePos, currentShader->ioData);
+			vec4 color = currentShader->fragProc(relativePos, ioData[3]);
 			uint8_t unorm[4] = { uint8_t(color.r * 255), uint8_t(color.g * 255), uint8_t(color.b * 255), uint8_t(color.a * 255) };
 			uint32_t* dest = (uint32_t*)renderTarget->images[0]->data;
 
@@ -159,6 +158,8 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 			if (write) dest[index] = *(uint32_t*)unorm;	
 		}
 	}
+	for (int i = 0; i < 4; i++)
+		delete[] ioData[i];
 }
 
 SdResult sdDraw(SdBuffer buffer)
