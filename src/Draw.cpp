@@ -99,8 +99,8 @@ float GetDistance(vec4 v1, vec4 v2)
 
 void Rasterize(void* vert0, void* vert1, void* vert2, uint8_t* interpBuffer) // the function that calls rasterize should own interpBuffer
 {
-	uint32_t width = renderTarget->images[0]->width;
-	uint32_t height = renderTarget->images[0]->height;
+	float width = (float)renderTarget->images[0]->width;
+	float height = (float)renderTarget->images[0]->height;
 
 	uint8_t* ioData[4]{}; // 3 for vertex calls, 4 is for the result
 	uint8_t* rawIO = interpBuffer;
@@ -147,7 +147,7 @@ void Rasterize(void* vert0, void* vert1, void* vert2, uint8_t* interpBuffer) // 
 			if ((s <= 0) || (t <= 0) || (s + t > 1))                      // this checks if the pixels is inside the triangle by checking if the barycentric coordinates are in order
 				continue;
 
-			for (int i = 0; i < currentShader->varDescriptionCount; i++)  // the input viarables are only interpolated if the pixel is inside the triangle
+			for (unsigned int i = 0; i < currentShader->varDescriptionCount; i++)  // the input viarables are only interpolated if the pixel is inside the triangle
 			{
 				uint32_t offset = currentShader->varDescriptions[i].offset;
 				InterpolateData(ioData[0] + offset, ioData[1] + offset, ioData[2] + offset, ioData[3] + offset, currentShader->varDescriptions[i].type, s, t, z);
@@ -158,7 +158,7 @@ void Rasterize(void* vert0, void* vert1, void* vert2, uint8_t* interpBuffer) // 
 			uint32_t* dest = (uint32_t*)renderTarget->images[0]->data;
 
 			bool write = true;
-			uint32_t index = width * (inv ? height - y : y) + x;
+			uint32_t index = uint32_t(width * (inv ? height - y : y) + x);
 			if (renderTarget->flags & SD_FRAMEBUFFER_DEPTH_BIT)
 			{
 				uint8_t* depthData = (uint8_t*)renderTarget->depth->data;
@@ -193,13 +193,13 @@ SdResult sdDrawIndexed(SdBuffer vertexBuffer, SdBuffer indexBuffer)
 	SdSize parallelSize = bufferSize / threadCount;
 	std::future<void>* proc = new std::future<void>[threadCount];
 	uint8_t* interpBuffer = currentShader->ioVarSize > 0 ? new uint8_t[currentShader->ioVarSize * threadCount * 4] : nullptr; // one interpolation buffer per thread to work indepedently
-	for (int x = 0; x < threadCount; x++)
+	for (uint32_t x = 0; x < threadCount; x++)
 	{
 		proc[x] = std::async([=]() {
 			void* verts[3]{};
 			char* data = (char*)vertexBuffer->data;
 			uint32_t stride = vertexBuffer->stride;
-			for (int i = parallelSize * x; i < parallelSize * x + parallelSize; i += 3)
+			for (SdSize i = parallelSize * x; i < parallelSize * x + parallelSize; i += 3)
 			{
 				switch (indexBuffer->indexType)
 				{
@@ -226,7 +226,7 @@ SdResult sdDrawIndexed(SdBuffer vertexBuffer, SdBuffer indexBuffer)
 			}
 			});
 	}
-	for (int i = 0; i < threadCount; i++)
+	for (uint32_t i = 0; i < threadCount; i++)
 		proc[i].get();
 	delete[] proc;
 	if (interpBuffer) 
@@ -241,7 +241,7 @@ void sdClearImage(SdImage image, uint8_t color)
 
 void sdClearFramebuffer(SdFramebuffer framebuffer, uint8_t color)
 {
-	for (int i = 0; i < framebuffer->imageCount && framebuffer->images[i] != SD_NULL; i++)
+	for (uint32_t i = 0; i < framebuffer->imageCount && framebuffer->images[i] != SD_NULL; i++)
 		sdClearImage(framebuffer->images[i], color);
 	if (framebuffer->depth != SD_NULL)
 		sdClearImage(framebuffer->depth, 255);

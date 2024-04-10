@@ -18,17 +18,13 @@ SdBuffer indexBuffer = SD_NULL;
 SdShaderGroup shader = SD_NULL;
 SdImage image = SD_NULL;
 
-union Vertex
+struct Vertex
 {
 	Vertex(float v0, float v1, float v2, float v3, float v4, float v5, float v6, float v7) : pos(v0, v1, v2), normal(v3, v4, v5), uv(v6, v7) {}
 
-	struct
-	{
-		vec3 pos;
-		vec3 normal;
-		vec2 uv;
-	};
-	float data[8];
+	vec3 pos;
+	vec3 normal;
+	vec2 uv;
 };
 
 struct ShaderData
@@ -278,7 +274,7 @@ int main()
 		SDL_UpdateWindowSurface(window);
 
 		rotation += mouseMotion;
-		rot = /*glm::rotate(glm::mat4(1), glm::radians(rotation.x), glm::vec3(1, 0, 0)) * */glm::rotate(glm::mat4(1), glm::radians(rotation.x), glm::vec3(0, 1, 0));
+		rot = glm::rotate(glm::mat4(1), glm::radians(rotation.y), glm::vec3(0, 0, 1)) * glm::rotate(glm::mat4(1), glm::radians(-rotation.x), glm::vec3(0, 1, 0));
 		view = glm::lookAt(vec3(-4, 1, 0), vec3(0, 0, 0), vec3(0, 1, 0));
 		proj = glm::perspective(glm::radians(90.0f), (float)surface->w / (float)surface->h, 0.01f, 1000.0f);
 		proj[1][1] *= -1;
