@@ -112,8 +112,8 @@ void Rasterize(void* vert0, void* vert1, void* vert2, uint8_t* interpBuffer) // 
 	rel[1] = currentShader->vertProc(vert1, ioData[1]);
 	rel[2] = currentShader->vertProc(vert2, ioData[2]);
 
-	vec4 abs[3]{}; // the coordinates in pixels, "absolute" coordinates
-	vec2 min = vec2(999999), max = vec2(0);
+	vec4 abs[3]{};                           // the coordinates in pixels, "absolute" coordinates
+	vec2 min = vec2(999999), max = vec2(0);  // the min and max of the triangle is needed to minimize the amount of pixels drawn to, min can be any number as long as its incredibly high
 	for (int i = 0; i < 3; i++)
 	{
 		vec4 screenSpace = (vec4(rel[i]) + vec4(1)) * 0.5f;
@@ -131,30 +131,30 @@ void Rasterize(void* vert0, void* vert1, void* vert2, uint8_t* interpBuffer) // 
 	max.y = ceil(Min(max.y, height));
 
 	float area = 0.5f * (abs[0].x * (abs[1].y - abs[2].y) + abs[1].x * (abs[2].y - abs[0].y) + abs[2].x * (abs[0].y - abs[1].y));
-	if (renderTarget->cull == SD_CULL_NONE ? false : area <= 0 ? renderTarget->cull == SD_CULL_BACK : renderTarget->cull == SD_CULL_FRONT)
+	if (renderTarget->cull == SD_CULL_NONE ? false : area <= 0 ? renderTarget->cull == SD_CULL_BACK : renderTarget->cull == SD_CULL_FRONT)  // compare the area to the cull mode and check if the triangle should be skipped
 		return;
 
-	float denom = (abs[1].y - abs[2].y) * (abs[0].x - abs[2].x) + (abs[2].x - abs[1].x) * (abs[0].y - abs[2].y) + 0.00001f; // + 0.00...f to prevent dividing by 0
+	float denom = (abs[1].y - abs[2].y) * (abs[0].x - abs[2].x) + (abs[2].x - abs[1].x) * (abs[0].y - abs[2].y) + 0.00001f;                 // + 0.00...f to prevent dividing by 0
 	bool inv = renderTarget->images[0]->flags & SD_IMAGE_FLIP_Y_BIT;
 	for (float y = min.y; y < max.y; y++)
 	{
 		for (float x = min.x; x <= max.x; x++)
 		{
-			float s = ((abs[1].y - abs[2].y) * (x - abs[2].x) + (abs[2].x - abs[1].x) * (y - abs[2].y)) / denom;
+			float s = ((abs[1].y - abs[2].y) * (x - abs[2].x) + (abs[2].x - abs[1].x) * (y - abs[2].y)) / denom;                            // compute the barycentric coordinates of the pixel, the denominator is calculated beforehand, because it is a constant for the triangle
 			float t = ((abs[2].y - abs[0].y) * (x - abs[2].x) + (abs[0].x - abs[2].x) * (y - abs[2].y)) / denom;
 			float z = 1 - s - t;
 			
-			if ((s <= 0) || (t <= 0) || (s + t > 1))
+			if ((s <= 0) || (t <= 0) || (s + t > 1))                      // this checks if the pixels is inside the triangle by checking if the barycentric coordinates are in order
 				continue;
 
-			for (int i = 0; i < currentShader->varDescriptionCount; i++)
+			for (int i = 0; i < currentShader->varDescriptionCount; i++)  // the input viarables are only interpolated if the pixel is inside the triangle
 			{
 				uint32_t offset = currentShader->varDescriptions[i].offset;
-				InterpolateData((char*)ioData[0] + offset, (char*)ioData[1] + offset, (char*)ioData[2] + offset, (char*)ioData[3] + offset, currentShader->varDescriptions[i].type, s, t, z);
+				InterpolateData(ioData[0] + offset, ioData[1] + offset, ioData[2] + offset, ioData[3] + offset, currentShader->varDescriptions[i].type, s, t, z);
 			}
 
 			vec4 color = currentShader->fragProc(ioData[3]);
-			uint8_t unorm[4] = { uint8_t(color.r * 255), uint8_t(color.g * 255), uint8_t(color.b * 255), uint8_t(color.a * 255) };
+			uint8_t unorm[4] = { uint8_t(color.r * 255), uint8_t(color.g * 255), uint8_t(color.b * 255), uint8_t(color.a * 255) }; // convert the high range color into a color standard range color
 			uint32_t* dest = (uint32_t*)renderTarget->images[0]->data;
 
 			bool write = true;
@@ -162,9 +162,9 @@ void Rasterize(void* vert0, void* vert1, void* vert2, uint8_t* interpBuffer) // 
 			if (renderTarget->flags & SD_FRAMEBUFFER_DEPTH_BIT)
 			{
 				uint8_t* depthData = (uint8_t*)renderTarget->depth->data;
-				float depth = rel[0].z * s + rel[1].z * t + rel[2].z * z;
+				float depth = rel[0].z * s + rel[1].z * t + rel[2].z * z;  // calculate the depth via interpolation
 				uint8_t convert = uint8_t(depth * 255);
-				write = depthData[index] >= convert;
+				write = depthData[index] >= convert;                       // if the value thats currently inside the depth buffer is larger than the calculated depth, then the current pixel is closer than the one in the same location
 				if (write)
 					depthData[index] = convert;
 				depth++;

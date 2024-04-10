@@ -82,7 +82,7 @@ struct SdImageCreateInfo
 	uint32_t width;
 	uint32_t height;
 	SdFlags flags;
-	SdImageFormat format; // unused
+	SdImageFormat format;
 };
 
 struct SdImage_t
