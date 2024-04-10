@@ -62,15 +62,25 @@ void InterpolateData(void* data0, void* data1, void* data2, void* result, SdIOTy
 	}
 	case SD_IO_VEC3:
 	{
-		*(vec3*)result = *(vec3*)data0 * s + *(vec3*)data0 * t + *(vec3*)data0 * p;
+		*(vec3*)result = *(vec3*)data0 * s + *(vec3*)data1 * t + *(vec3*)data2 * p;
 		break;
 	}
 	case SD_IO_VEC4:
 	{
 		*(vec4*)result = *(vec4*)data0 * s + *(vec4*)data1 * t + *(vec4*)data2 * p;
 		break;
-	}	
 	}
+	}
+}
+
+float Min(float val, float comp)
+{
+	return val > comp ? comp : val;
+}
+
+float Max(float val, float comp)
+{
+	return val > comp ? val : comp;
 }
 
 float GetDistance(vec2 v1, vec2 v2)
@@ -96,22 +106,25 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 	relPixels[1] = currentShader->vertProc(vert1, ioData[1]);
 	relPixels[2] = currentShader->vertProc(vert2, ioData[2]);
 
-	vec4 pixelsPos[3]{};
-	vec2 min = vec2(-1), max = vec2(0);
+	vec4 abs[3]{}; // the coordinates in pixels, "absolute" coordinates
+	vec2 min = vec2(999999), max = vec2(0);
 	for (int i = 0; i < 3; i++)
 	{
 		vec4 screenSpace = (vec4(relPixels[i]) + vec4(1)) * 0.5f;
-		pixelsPos[i] = vec4(screenSpace.x * width, screenSpace.y * height, screenSpace.z, screenSpace.w);
+		abs[i] = vec4(screenSpace.x * width, screenSpace.y * height, screenSpace.z, screenSpace.w);
 		
-		max.x = pixelsPos[i].x > max.x ? pixelsPos[i].x : max.x;
-		max.y = pixelsPos[i].y > max.y ? pixelsPos[i].y : max.y;
+		max.x = abs[i].x > max.x ? abs[i].x : max.x;
+		max.y = abs[i].y > max.y ? abs[i].y : max.y;
 
-		if (min == vec2(-1)) min = max;
-
-		min.x = pixelsPos[i].x < min.x ? pixelsPos[i].x : min.x;
-		min.y = pixelsPos[i].y < min.y ? pixelsPos[i].y : min.y;
+		min.x = abs[i].x < min.x ? abs[i].x : min.x;
+		min.y = abs[i].y < min.y ? abs[i].y : min.y;
 	}
-	float area = 0.5f * (pixelsPos[1].y * pixelsPos[2].x + pixelsPos[0].y * (-pixelsPos[1].x + pixelsPos[2].x) + pixelsPos[0].x * (pixelsPos[1].y - pixelsPos[2].y) + pixelsPos[1].x * pixelsPos[2].y);
+	min.x = Min(min.x, width);
+	min.y = Min(min.y, height);
+	max.x = Min(max.x, width);
+	max.y = Min(max.y, height);
+
+	float area = 0.5f * (abs[1].y * abs[2].x + abs[0].y * (-abs[1].x + abs[2].x) + abs[0].x * (abs[1].y - abs[2].y) + abs[1].x * abs[2].y);
 	if (area <= 0)
 	{
 		for (int i = 0; i < 4; i++)
@@ -124,36 +137,39 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 	{
 		for (uint32_t x = (uint32_t)min.x; x <= (uint32_t)max.x; x++)
 		{
-			uint64_t index = width * (inv ? height - y : y) + x;
-			if (index > width * height) continue;
+			vec2 p = vec2(x, y);
 
-			vec4 p = vec4(x, y, 0, 1);
-
-			float s = 1 / (2 * area) * (pixelsPos[0].y * pixelsPos[2].x - pixelsPos[0].x * pixelsPos[2].y + (pixelsPos[2].y - pixelsPos[0].y) * p.x + (pixelsPos[0].x - pixelsPos[2].x) * p.y);
-			float t = 1 / (2 * area) * (pixelsPos[0].x * pixelsPos[1].y - pixelsPos[0].y * pixelsPos[1].x + (pixelsPos[0].y - pixelsPos[1].y) * p.x + (pixelsPos[1].x - pixelsPos[0].x) * p.y);
+			float denom = (abs[1].y - abs[2].y) * (abs[0].x - abs[2].x) + (abs[2].x - abs[1].x) * (abs[0].y - abs[2].y) + 0.00001f; // + 0.00...f to prevent dividing by 0
+			float s = ((abs[1].y - abs[2].y) * (p.x - abs[2].x) + (abs[2].x - abs[1].x) * (p.y - abs[2].y)) / denom;
+			float t = ((abs[2].y - abs[0].y) * (p.x - abs[2].x) + (abs[0].x - abs[2].x) * (p.y - abs[2].y)) / denom;
 			float z = 1 - s - t;
-
-			if ((s < 0) || (t < 0) || (s + t > 1))
+			
+			if ((s <= 0) || (t <= 0) || (s + t > 1))
 				continue;
-
-			vec2 relativePos = p / vec4(width, height, 1, 1);
+	
+			vec2 relativePos = p / vec2(width, height);
 
 			for (int i = 0; i < currentShader->varDescriptionCount; i++)
-				InterpolateData((char*)ioData[0] + currentShader->varDescriptions[i].offset, (char*)ioData[1] + currentShader->varDescriptions[i].offset, (char*)ioData[2] + currentShader->varDescriptions[i].offset, (char*)ioData[3] + currentShader->varDescriptions[i].offset, currentShader->varDescriptions[i].type, s, t, z);
+			{
+				uint32_t offset = currentShader->varDescriptions[i].offset;
+				InterpolateData((char*)ioData[0] + offset, (char*)ioData[1] + offset, (char*)ioData[2] + offset, (char*)ioData[3] + offset, currentShader->varDescriptions[i].type, s, t, z);
+			}
 
 			vec4 color = currentShader->fragProc(relativePos, ioData[3]);
 			uint8_t unorm[4] = { uint8_t(color.r * 255), uint8_t(color.g * 255), uint8_t(color.b * 255), uint8_t(color.a * 255) };
 			uint32_t* dest = (uint32_t*)renderTarget->images[0]->data;
 
 			bool write = true;
+			uint32_t index = width * (inv ? height - y : y) + x;
 			if (renderTarget->flags & SD_FRAMEBUFFER_DEPTH_BIT)
 			{
 				uint8_t* depthData = (uint8_t*)renderTarget->depth->data;
 				float depth = relPixels[0].z * s + relPixels[1].z * t + relPixels[2].z * z;
-				uint8_t convert = uint8_t(-depth * 255);
+				uint8_t convert = uint8_t(depth * 255);
 				write = depthData[index] >= convert;
 				if (write)
 					depthData[index] = convert;
+				depth++;
 			}
 			if (write) dest[index] = *(uint32_t*)unorm;	
 		}

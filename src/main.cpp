@@ -62,7 +62,7 @@ vec4 VertexProcessor(const void* block, void* output)
 	if (rotation.y > 360) rotation.y = 0;
 
 	id += 1 / 36.0f;
-	return /*proj * view * */rot * vec4(vert->pos, 1);
+	return proj * view * rot * vec4(vert->pos, 1);
 }
 
 vec4 FragmentProcessor(const vec2 pos, const void* input)
@@ -79,7 +79,7 @@ SdShaderGroup shader = SD_NULL;
 void CreateFramebuffer()
 {
 	SdFramebufferCreateInfo createInfo{};
-	createInfo.flags = SD_FRAMEBUFFER_DEPTH_BIT;
+	//createInfo.flags = SD_FRAMEBUFFER_DEPTH_BIT;
 	createInfo.imageCount = 1;
 
 	SdImageImportInfo importInfo{};
@@ -158,7 +158,7 @@ void CreateVertexBuffer()
 void CreateIndexBuffer()
 {
 	constexpr int size = 36;
-	uint16_t indices[size] = { 0, 1, 2, 1, 2, 3 };
+	uint16_t indices[size] = { };
 	for (int i = 0; i < size; i++)
 		indices[i] = i;
 
@@ -256,7 +256,7 @@ int main()
 
 		rotation += mouseMotion;
 		rot = /*glm::rotate(glm::mat4(1), glm::radians(rotation.x), glm::vec3(1, 0, 0)) * */glm::rotate(glm::mat4(1), glm::radians(rotation.x), glm::vec3(0, 1, 0));
-		view = glm::lookAt(vec3(0), vec3(1, 0, 0), vec3(0, 1, 0));
+		view = glm::lookAt(vec3(-4, 1, 0), vec3(0, 0, 0), vec3(0, 1, 0));
 		proj = glm::perspective(glm::radians(90.0f), (float)surface->w / (float)surface->h, 0.01f, 1000.0f);
 		proj[1][1] *= -1;
 		mouseMotion = vec2(0);
