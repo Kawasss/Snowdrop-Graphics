@@ -198,35 +198,31 @@ SdResult sdDrawIndexed(SdBuffer vertexBuffer, SdBuffer indexBuffer)
 		proc[x] = std::async([=]() {
 			for (int i = parallelSize * x; i < parallelSize * x + parallelSize; i += 3)
 			{
-				void* vert0 = nullptr, * vert1 = nullptr, * vert2 = nullptr;
+				void* verts[3]{};
+				char* data = (char*)vertexBuffer->data;
+				uint32_t stride = vertexBuffer->stride;
 				switch (indexBuffer->indexType)
 				{
 				case SD_INDEX_TYPE_16_BIT: // a lot of the same stuff here, maybe change??
 				{
-					uint16_t* data = (uint16_t*)indexBuffer->data;
-					uint16_t index0 = *(data + i);
-					uint16_t index1 = *(data + i + 1);
-					uint16_t index2 = *(data + i + 2);
+					uint16_t* shorts = (uint16_t*)indexBuffer->data + i;
 
-					vert0 = (char*)vertexBuffer->data + index0 * vertexBuffer->stride;
-					vert1 = (char*)vertexBuffer->data + index1 * vertexBuffer->stride;
-					vert2 = (char*)vertexBuffer->data + index2 * vertexBuffer->stride;
+					verts[0] = data + shorts[0] * stride;
+					verts[1] = data + shorts[1] * stride;
+					verts[2] = data + shorts[2] * stride;
 					break;
 				}
 				case SD_INDEX_TYPE_32_BIT:
 				{
-					uint32_t* data = (uint32_t*)indexBuffer->data;
-					uint32_t index3 = *(data + i);
-					uint32_t index4 = *(data + i + 1);
-					uint32_t index5 = *(data + i + 2);
+					uint32_t* bigs = (uint32_t*)indexBuffer->data + i;
 
-					vert0 = (char*)vertexBuffer->data + index3 * vertexBuffer->stride;
-					vert1 = (char*)vertexBuffer->data + index4 * vertexBuffer->stride;
-					vert2 = (char*)vertexBuffer->data + index5 * vertexBuffer->stride;
+					verts[0] = data + bigs[0] * stride;
+					verts[1] = data + bigs[1] * stride;
+					verts[2] = data + bigs[2] * stride;
 					break;
 				}
 				}
-				Rasterize(vert0, vert1, vert2, interpBuffer + currentShader->ioVarSize * x * 4);
+				Rasterize(verts[0], verts[1], verts[2], interpBuffer + currentShader->ioVarSize * x * 4);
 			}
 			});
 	}
