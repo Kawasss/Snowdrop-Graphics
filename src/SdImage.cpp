@@ -91,9 +91,7 @@ vec4 sdSampleTexture(SdImage image, vec2 uv)
 	uint32_t absX = image->width * uv.x;
 	uint32_t absY = image->height * uv.y;
 
-	uint32_t* data = (uint32_t*)image->data;
-	uint32_t raw = data[absY * image->width + absX];
-	uint8_t* converted = (uint8_t*)&raw;
-
+	int index = (absX * image->height + absY) * image->stride;
+	uint8_t* converted = (uint8_t*)image->data + index;
 	return vec4(converted[0] / 255.0f, converted[1] / 255.0f, converted[2] / 255.0f, converted[3] / 255.0f);
 }

@@ -6,8 +6,17 @@
 
 #include <snowdrop/snowdrop.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 bool close = false;
 SDL_Surface* surface;
+
+SdFramebuffer framebuffer = SD_NULL;
+SdBuffer vertexBuffer = SD_NULL;
+SdBuffer indexBuffer = SD_NULL;
+SdShaderGroup shader = SD_NULL;
+SdImage image = SD_NULL;
 
 union Vertex
 {
@@ -68,13 +77,9 @@ vec4 VertexProcessor(const void* block, void* output)
 vec4 FragmentProcessor(const void* input)
 {
 	ShaderData* in = (ShaderData*)input;
-	return vec4(in->uv, 0, 1);
+	vec4 color = sdSampleTexture(image, in->uv);
+	return color;
 }
-
-SdFramebuffer framebuffer = SD_NULL;
-SdBuffer vertexBuffer = SD_NULL;
-SdBuffer indexBuffer = SD_NULL;
-SdShaderGroup shader = SD_NULL;
 
 void CreateFramebuffer()
 {
@@ -94,6 +99,22 @@ void CreateFramebuffer()
 	sdImportImage(&importInfo, &framebuffer->images[0]);
 
 	sdBindFramebuffer(framebuffer);
+}
+
+void CreateImage()
+{
+	int x, y, comp;
+	stbi_uc* data = stbi_load("src/example/uv.png", &x, &y, &comp, STBI_rgb_alpha);
+
+	SdImageCreateInfo createInfo{};
+	createInfo.format = SD_FORMAT_R8G8B8A8_UNORM;
+	createInfo.width = x;
+	createInfo.height = y;
+
+	sdCreateImage(&createInfo, &image);
+	memcpy(sdAccessImage(image), data, x * y * (comp + 1));
+
+	stbi_image_free(data);
 }
 
 void CreateVertexBuffer()
@@ -245,6 +266,7 @@ int main()
 	CreateIndexBuffer();
 	CreateFramebuffer();
 	CreateDepthImage();
+	CreateImage();
 
 	while (!close)
 	{
