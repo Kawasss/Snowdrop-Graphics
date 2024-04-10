@@ -90,9 +90,15 @@ float GetDistance(vec2 v1, vec2 v2)
 	return (float)ret;
 }
 
+float GetDistance(vec4 v1, vec4 v2)
+{
+	vec2 distance = glm::abs(v2 - v1);
+	double ret = sqrt(pow(distance.x, 2) + pow(distance.y, 2));
+	return (float)ret;
+}
+
 void Rasterize(void* vert0, void* vert1, void* vert2)
 {
-	memset(renderTarget->depth->data, 255, renderTarget->depth->width * renderTarget->depth->height);
 	uint32_t width = renderTarget->images[0]->width;
 	uint32_t height = renderTarget->images[0]->height;
 
@@ -101,16 +107,16 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 		for (int i = 0; i < 4; i++)
 			ioData[i] = new uint8_t[currentShader->ioVarSize]; // maybe optimize by making one request for memory instead of 4?
 
-	vec4 relPixels[3]{};
-	relPixels[0] = currentShader->vertProc(vert0, ioData[0]);
-	relPixels[1] = currentShader->vertProc(vert1, ioData[1]);
-	relPixels[2] = currentShader->vertProc(vert2, ioData[2]);
+	vec4 rel[3]{};
+	rel[0] = currentShader->vertProc(vert0, ioData[0]);
+	rel[1] = currentShader->vertProc(vert1, ioData[1]);
+	rel[2] = currentShader->vertProc(vert2, ioData[2]);
 
 	vec4 abs[3]{}; // the coordinates in pixels, "absolute" coordinates
 	vec2 min = vec2(999999), max = vec2(0);
 	for (int i = 0; i < 3; i++)
 	{
-		vec4 screenSpace = (vec4(relPixels[i]) + vec4(1)) * 0.5f;
+		vec4 screenSpace = (vec4(rel[i]) + vec4(1)) * 0.5f;
 		abs[i] = vec4(screenSpace.x * width, screenSpace.y * height, screenSpace.z, screenSpace.w);
 		
 		max.x = abs[i].x > max.x ? abs[i].x : max.x;
@@ -119,12 +125,12 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 		min.x = abs[i].x < min.x ? abs[i].x : min.x;
 		min.y = abs[i].y < min.y ? abs[i].y : min.y;
 	}
-	min.x = Min(min.x, width);
-	min.y = Min(min.y, height);
-	max.x = Min(max.x, width);
-	max.y = Min(max.y, height);
+	min.x = ceil(Min(min.x, width));
+	min.y = ceil(Min(min.y, height));
+	max.x = ceil(Min(max.x, width));
+	max.y = ceil(Min(max.y, height));
 
-	float area = 0.5f * (abs[1].y * abs[2].x + abs[0].y * (-abs[1].x + abs[2].x) + abs[0].x * (abs[1].y - abs[2].y) + abs[1].x * abs[2].y);
+	float area = 0.5f * (abs[0].x * (abs[1].y - abs[2].y) + abs[1].x * (abs[2].y - abs[0].y) + abs[2].x * (abs[0].y - abs[1].y));//(abs[1].y * abs[2].x + abs[0].y * (-abs[1].x + abs[2].x) + abs[0].x * (abs[1].y - abs[2].y) + abs[1].x * abs[2].y);
 	if (area <= 0)
 	{
 		for (int i = 0; i < 4; i++)
@@ -132,14 +138,15 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 		return;
 	}
 
+	float denom = (abs[1].y - abs[2].y) * (abs[0].x - abs[2].x) + (abs[2].x - abs[1].x) * (abs[0].y - abs[2].y) + 0.00001f; // + 0.00...f to prevent dividing by 0
 	bool inv = renderTarget->images[0]->flags & SD_IMAGE_FLIP_Y_BIT;
-	for (uint32_t y = (uint32_t)min.y; y < (uint32_t)max.y; y++)
+	for (float y = min.y; y < max.y; y++)
 	{
-		for (uint32_t x = (uint32_t)min.x; x <= (uint32_t)max.x; x++)
+		for (float x = min.x; x <= max.x; x++)
 		{
 			vec2 p = vec2(x, y);
 
-			float denom = (abs[1].y - abs[2].y) * (abs[0].x - abs[2].x) + (abs[2].x - abs[1].x) * (abs[0].y - abs[2].y) + 0.00001f; // + 0.00...f to prevent dividing by 0
+			
 			float s = ((abs[1].y - abs[2].y) * (p.x - abs[2].x) + (abs[2].x - abs[1].x) * (p.y - abs[2].y)) / denom;
 			float t = ((abs[2].y - abs[0].y) * (p.x - abs[2].x) + (abs[0].x - abs[2].x) * (p.y - abs[2].y)) / denom;
 			float z = 1 - s - t;
@@ -164,7 +171,7 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 			if (renderTarget->flags & SD_FRAMEBUFFER_DEPTH_BIT)
 			{
 				uint8_t* depthData = (uint8_t*)renderTarget->depth->data;
-				float depth = relPixels[0].z * s + relPixels[1].z * t + relPixels[2].z * z;
+				float depth = rel[0].z * s + rel[1].z * t + rel[2].z * z;
 				uint8_t convert = uint8_t(depth * 255);
 				write = depthData[index] >= convert;
 				if (write)
@@ -191,6 +198,7 @@ SdResult sdDraw(SdBuffer buffer)
 #include <future>
 SdResult sdDrawIndexed(SdBuffer vertexBuffer, SdBuffer indexBuffer)
 {
+	memset(renderTarget->depth->data, 255, renderTarget->depth->width * renderTarget->depth->height);
 	SdSize bufferSize = indexBuffer->size / (indexBuffer->indexType == SD_INDEX_TYPE_16_BIT ? sizeof(uint16_t) : sizeof(uint32_t));
 	SdSize parallelSize = bufferSize / threadCount;
 	std::future<void>* proc = new std::future<void>[threadCount];
