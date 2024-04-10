@@ -97,15 +97,15 @@ float GetDistance(vec4 v1, vec4 v2)
 	return (float)ret;
 }
 
-void Rasterize(void* vert0, void* vert1, void* vert2)
+void Rasterize(void* vert0, void* vert1, void* vert2, uint8_t* interpBuffer) // the function that calls rasterize should own interpBuffer
 {
 	uint32_t width = renderTarget->images[0]->width;
 	uint32_t height = renderTarget->images[0]->height;
 
 	uint8_t* ioData[4]{}; // 3 for vertex calls, 4 is for the result
-	if (currentShader->ioVarSize > 0)
-		for (int i = 0; i < 4; i++)
-			ioData[i] = new uint8_t[currentShader->ioVarSize]; // maybe optimize by making one request for memory instead of 4?
+	uint8_t* rawIO = interpBuffer;
+	for (int i = 0; i < 4; i++)
+		ioData[i] = rawIO + currentShader->ioVarSize * i;
 
 	vec4 rel[3]{};
 	rel[0] = currentShader->vertProc(vert0, ioData[0]);
@@ -132,11 +132,7 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 
 	float area = 0.5f * (abs[0].x * (abs[1].y - abs[2].y) + abs[1].x * (abs[2].y - abs[0].y) + abs[2].x * (abs[0].y - abs[1].y));
 	if (renderTarget->cull == SD_CULL_NONE ? false : area <= 0 ? renderTarget->cull == SD_CULL_BACK : renderTarget->cull == SD_CULL_FRONT)
-	{
-		for (int i = 0; i < 4; i++)
-			delete[] ioData[i];
 		return;
-	}
 
 	float denom = (abs[1].y - abs[2].y) * (abs[0].x - abs[2].x) + (abs[2].x - abs[1].x) * (abs[0].y - abs[2].y) + 0.00001f; // + 0.00...f to prevent dividing by 0
 	bool inv = renderTarget->images[0]->flags & SD_IMAGE_FLIP_Y_BIT;
@@ -144,17 +140,14 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 	{
 		for (float x = min.x; x <= max.x; x++)
 		{
-			vec2 p = vec2(x, y);
-
-			
-			float s = ((abs[1].y - abs[2].y) * (p.x - abs[2].x) + (abs[2].x - abs[1].x) * (p.y - abs[2].y)) / denom;
-			float t = ((abs[2].y - abs[0].y) * (p.x - abs[2].x) + (abs[0].x - abs[2].x) * (p.y - abs[2].y)) / denom;
+			float s = ((abs[1].y - abs[2].y) * (x - abs[2].x) + (abs[2].x - abs[1].x) * (y - abs[2].y)) / denom;
+			float t = ((abs[2].y - abs[0].y) * (x - abs[2].x) + (abs[0].x - abs[2].x) * (y - abs[2].y)) / denom;
 			float z = 1 - s - t;
 			
 			if ((s <= 0) || (t <= 0) || (s + t > 1))
 				continue;
 	
-			vec2 relativePos = p / vec2(width, height);
+			vec2 relativePos = vec2(x / width, y / height);
 
 			for (int i = 0; i < currentShader->varDescriptionCount; i++)
 			{
@@ -181,17 +174,17 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 			if (write) dest[index] = *(uint32_t*)unorm;	
 		}
 	}
-	for (int i = 0; i < 4; i++)
-		delete[] ioData[i];
 }
 
 SdResult sdDraw(SdBuffer buffer)
 {
-	
+	uint8_t* interpBuffer = currentShader->ioVarSize > 0 ? new uint8_t[currentShader->ioVarSize] : nullptr;
 	for (int i = 0; i < buffer->size; i += buffer->stride * 3)
 	{
-		Rasterize((char*)buffer->data + i, (char*)buffer->data + i + buffer->stride, (char*)buffer->data + i + buffer->stride * 2);
+		Rasterize((char*)buffer->data + i, (char*)buffer->data + i + buffer->stride, (char*)buffer->data + i + buffer->stride * 2, interpBuffer);
 	}
+	if (interpBuffer)
+		delete[] interpBuffer;
 	return SD_SUCCESS;
 }
 
@@ -201,6 +194,7 @@ SdResult sdDrawIndexed(SdBuffer vertexBuffer, SdBuffer indexBuffer)
 	SdSize bufferSize = indexBuffer->size / (indexBuffer->indexType == SD_INDEX_TYPE_16_BIT ? sizeof(uint16_t) : sizeof(uint32_t));
 	SdSize parallelSize = bufferSize / threadCount;
 	std::future<void>* proc = new std::future<void>[threadCount];
+	uint8_t* interpBuffer = currentShader->ioVarSize > 0 ? new uint8_t[currentShader->ioVarSize * threadCount * 4] : nullptr; // one interpolation buffer per thread to work indepedently
 	for (int x = 0; x < threadCount; x++)
 	{
 		proc[x] = std::async([=]() {
@@ -234,12 +228,15 @@ SdResult sdDrawIndexed(SdBuffer vertexBuffer, SdBuffer indexBuffer)
 					break;
 				}
 				}
-				Rasterize(vert0, vert1, vert2);
+				Rasterize(vert0, vert1, vert2, interpBuffer + currentShader->ioVarSize * x * 4);
 			}
 			});
 	}
 	for (int i = 0; i < threadCount; i++)
 		proc[i].get();
+	delete[] proc;
+	if (interpBuffer) 
+		delete[] interpBuffer;
 	return SD_SUCCESS;
 }
 
