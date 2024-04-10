@@ -106,10 +106,18 @@ enum SdFramebufferFlags : SdFlags
 	SD_FRAMEBUFFER_DEPTH_BIT = 1 << 0,
 };
 
+enum SdCullMode
+{
+	SD_CULL_NONE,
+	SD_CULL_BACK,
+	SD_CULL_FRONT,
+};
+
 struct SdFramebufferCreateInfo
 {
 	uint32_t imageCount;
 	SdFramebufferFlags flags;
+	SdCullMode cullMode;
 };
 
 struct SdFramebuffer_t
@@ -117,6 +125,7 @@ struct SdFramebuffer_t
 	SdImage* images;
 	uint32_t imageCount;
 	SdImage depth;
+	SdCullMode cull;
 	SdFramebufferFlags flags;
 };
 typedef SdFramebuffer_t* SdFramebuffer;

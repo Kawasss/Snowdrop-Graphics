@@ -130,8 +130,8 @@ void Rasterize(void* vert0, void* vert1, void* vert2)
 	max.x = ceil(Min(max.x, width));
 	max.y = ceil(Min(max.y, height));
 
-	float area = 0.5f * (abs[0].x * (abs[1].y - abs[2].y) + abs[1].x * (abs[2].y - abs[0].y) + abs[2].x * (abs[0].y - abs[1].y));//(abs[1].y * abs[2].x + abs[0].y * (-abs[1].x + abs[2].x) + abs[0].x * (abs[1].y - abs[2].y) + abs[1].x * abs[2].y);
-	if (area <= 0)
+	float area = 0.5f * (abs[0].x * (abs[1].y - abs[2].y) + abs[1].x * (abs[2].y - abs[0].y) + abs[2].x * (abs[0].y - abs[1].y));
+	if (renderTarget->cull == SD_CULL_NONE ? false : area <= 0 ? renderTarget->cull == SD_CULL_BACK : renderTarget->cull == SD_CULL_FRONT)
 	{
 		for (int i = 0; i < 4; i++)
 			delete[] ioData[i];

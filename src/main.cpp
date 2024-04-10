@@ -79,7 +79,8 @@ SdShaderGroup shader = SD_NULL;
 void CreateFramebuffer()
 {
 	SdFramebufferCreateInfo createInfo{};
-	//createInfo.flags = SD_FRAMEBUFFER_DEPTH_BIT;
+	createInfo.flags = SD_FRAMEBUFFER_DEPTH_BIT;
+	createInfo.cullMode = SD_CULL_BACK;
 	createInfo.imageCount = 1;
 
 	SdImageImportInfo importInfo{};

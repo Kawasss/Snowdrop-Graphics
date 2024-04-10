@@ -62,6 +62,7 @@ SdResult sdCreateFramebuffer(const SdFramebufferCreateInfo* createInfo, SdFrameb
 	result->images = new SdImage[createInfo->imageCount];
 	result->imageCount = createInfo->imageCount;
 	result->flags = createInfo->flags;
+	result->cull = createInfo->cullMode;
 
 	*framebuffer = result;
 	return SD_SUCCESS;
