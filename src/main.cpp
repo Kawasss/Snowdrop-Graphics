@@ -250,7 +250,7 @@ int main()
 	{
 		ProcessSDLEvents(window);
 		SDL_LockSurface(surface);
-		memset(surface->pixels, 0, surface->w * surface->h * sizeof(uint32_t));
+		sdClearFramebuffer(framebuffer, 0);
 		sdDrawIndexed(vertexBuffer, indexBuffer);
 		SDL_UnlockSurface(surface);
 		SDL_UpdateWindowSurface(window);

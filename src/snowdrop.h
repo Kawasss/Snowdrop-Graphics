@@ -173,6 +173,8 @@ inline extern SdResult sdCreateShaderGroup(const SdShaderGroupCreateInfo* create
 inline extern void sdBindShaderGroup(SdShaderGroup shaderGroup);
 inline extern void sdDestroyShaderGroup(SdShaderGroup shaderGroup);
 
+inline extern void sdClearFramebuffer(SdFramebuffer framebuffer, uint8_t color);
+inline extern void sdClearImage(SdImage image, uint8_t color);
 inline extern SdResult sdDraw(SdBuffer vertexBuffer);
 inline extern SdResult sdDrawIndexed(SdBuffer vertexBuffer, SdBuffer indexBuffer);
 inline extern SdResult sdBindFramebuffer(SdFramebuffer framebuffer);

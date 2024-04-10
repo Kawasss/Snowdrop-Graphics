@@ -198,7 +198,6 @@ SdResult sdDraw(SdBuffer buffer)
 #include <future>
 SdResult sdDrawIndexed(SdBuffer vertexBuffer, SdBuffer indexBuffer)
 {
-	memset(renderTarget->depth->data, 255, renderTarget->depth->width * renderTarget->depth->height);
 	SdSize bufferSize = indexBuffer->size / (indexBuffer->indexType == SD_INDEX_TYPE_16_BIT ? sizeof(uint16_t) : sizeof(uint32_t));
 	SdSize parallelSize = bufferSize / threadCount;
 	std::future<void>* proc = new std::future<void>[threadCount];
@@ -242,4 +241,17 @@ SdResult sdDrawIndexed(SdBuffer vertexBuffer, SdBuffer indexBuffer)
 	for (int i = 0; i < threadCount; i++)
 		proc[i].get();
 	return SD_SUCCESS;
+}
+
+void sdClearImage(SdImage image, uint8_t color)
+{
+	memset(image->data, color, image->width * image->height * image->stride);
+}
+
+void sdClearFramebuffer(SdFramebuffer framebuffer, uint8_t color)
+{
+	for (int i = 0; i < framebuffer->imageCount && framebuffer->images[i] != SD_NULL; i++)
+		sdClearImage(framebuffer->images[i], color);
+	if (framebuffer->depth != SD_NULL)
+		sdClearImage(framebuffer->depth, 255);
 }
