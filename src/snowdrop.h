@@ -151,7 +151,7 @@ struct SdIOVariableDescription
 struct SdShaderGroupCreateInfo
 {
 	vec4(*vertexProcessor)(const void*, void*);
-	vec4(*fragmentProcessor)(const vec2, const void*);
+	vec4(*fragmentProcessor)(const void*);
 
 	uint32_t ioVarSize;
 	uint32_t varDescriptionCount;
@@ -161,7 +161,7 @@ struct SdShaderGroupCreateInfo
 struct SdShaderGroup_t
 {
 	vec4(*vertProc)(const void*, void*);
-	vec4(*fragProc)(const vec2, const void*);
+	vec4(*fragProc)(const void*);
 
 	uint32_t ioVarSize;
 	uint32_t varDescriptionCount;

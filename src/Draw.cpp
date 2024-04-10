@@ -146,8 +146,6 @@ void Rasterize(void* vert0, void* vert1, void* vert2, uint8_t* interpBuffer) // 
 			
 			if ((s <= 0) || (t <= 0) || (s + t > 1))
 				continue;
-	
-			vec2 relativePos = vec2(x / width, y / height);
 
 			for (int i = 0; i < currentShader->varDescriptionCount; i++)
 			{
@@ -155,7 +153,7 @@ void Rasterize(void* vert0, void* vert1, void* vert2, uint8_t* interpBuffer) // 
 				InterpolateData((char*)ioData[0] + offset, (char*)ioData[1] + offset, (char*)ioData[2] + offset, (char*)ioData[3] + offset, currentShader->varDescriptions[i].type, s, t, z);
 			}
 
-			vec4 color = currentShader->fragProc(relativePos, ioData[3]);
+			vec4 color = currentShader->fragProc(ioData[3]);
 			uint8_t unorm[4] = { uint8_t(color.r * 255), uint8_t(color.g * 255), uint8_t(color.b * 255), uint8_t(color.a * 255) };
 			uint32_t* dest = (uint32_t*)renderTarget->images[0]->data;
 

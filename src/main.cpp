@@ -65,7 +65,7 @@ vec4 VertexProcessor(const void* block, void* output)
 	return proj * view * rot * vec4(vert->pos, 1);
 }
 
-vec4 FragmentProcessor(const vec2 pos, const void* input)
+vec4 FragmentProcessor(const void* input)
 {
 	ShaderData* in = (ShaderData*)input;
 	return vec4(in->uv, 0, 1);
