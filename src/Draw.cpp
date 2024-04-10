@@ -1,4 +1,4 @@
-#include "snowdrop.h"
+#include <snowdrop/snowdrop.h>
 
 SdFramebuffer renderTarget = SD_NULL;
 SdShaderGroup currentShader = SD_NULL;
@@ -196,14 +196,14 @@ SdResult sdDrawIndexed(SdBuffer vertexBuffer, SdBuffer indexBuffer)
 	for (int x = 0; x < threadCount; x++)
 	{
 		proc[x] = std::async([=]() {
+			void* verts[3]{};
+			char* data = (char*)vertexBuffer->data;
+			uint32_t stride = vertexBuffer->stride;
 			for (int i = parallelSize * x; i < parallelSize * x + parallelSize; i += 3)
 			{
-				void* verts[3]{};
-				char* data = (char*)vertexBuffer->data;
-				uint32_t stride = vertexBuffer->stride;
 				switch (indexBuffer->indexType)
 				{
-				case SD_INDEX_TYPE_16_BIT: // a lot of the same stuff here, maybe change??
+				case SD_INDEX_TYPE_16_BIT:
 				{
 					uint16_t* shorts = (uint16_t*)indexBuffer->data + i;
 

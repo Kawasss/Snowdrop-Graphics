@@ -1,4 +1,4 @@
-#include "snowdrop.h"
+#include <snowdrop/snowdrop.h>
 
 uint32_t GetStride(SdImageFormat format)
 {
@@ -86,7 +86,7 @@ SdResult sdFramebufferBindImage(SdFramebuffer framebuffer, SdImage image, int in
 	return SD_SUCCESS;
 }
 
-vec4 sdTexture(SdImage image, vec2 uv)
+vec4 sdSampleTexture(SdImage image, vec2 uv)
 {
 	uint32_t absX = image->width * uv.x;
 	uint32_t absY = image->height * uv.y;

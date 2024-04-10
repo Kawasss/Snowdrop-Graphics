@@ -179,4 +179,4 @@ inline extern SdResult sdDraw(SdBuffer vertexBuffer);
 inline extern SdResult sdDrawIndexed(SdBuffer vertexBuffer, SdBuffer indexBuffer);
 inline extern SdResult sdBindFramebuffer(SdFramebuffer framebuffer);
 
-inline extern vec4 sdTexture(SdImage image, vec2 uv);
+inline extern vec4 sdSampleTexture(SdImage image, vec2 uv);

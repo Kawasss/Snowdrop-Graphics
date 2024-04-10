@@ -1,4 +1,4 @@
-#include "snowdrop.h"
+#include <snowdrop/snowdrop.h>
 
 SdResult sdCreateBuffer(const SdBufferCreateInfo* createInfo, SdBuffer* buffer)
 {

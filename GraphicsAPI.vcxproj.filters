@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\SdBuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -27,12 +24,15 @@
     <ClCompile Include="src\SdImage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\example\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\maths.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snowdrop.h">
+    <ClInclude Include="include\snowdrop\snowdrop.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

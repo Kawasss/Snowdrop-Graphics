@@ -4,7 +4,7 @@
 #include <SDL2/SDL.h>
 #include <future>
 
-#include "snowdrop.h"
+#include <snowdrop/snowdrop.h>
 
 bool close = false;
 SDL_Surface* surface;
