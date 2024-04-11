@@ -3,6 +3,8 @@
 #include <iostream>
 #include <SDL2/SDL.h>
 #include <future>
+#include <thread>
+#include <iostream>
 
 #include <snowdrop/snowdrop.h>
 
@@ -227,8 +229,9 @@ void CreateShaderGroup()
 void CreateContext()
 {
 	SdContextCreateInfo createInfo{};
-	createInfo.threadCount = 12;
-
+	createInfo.threadCount = std::thread::hardware_concurrency();
+	
+	std::cout << "Created context with " << createInfo.threadCount << " threads\n";
 	sdCreateContext(&createInfo);
 }
 
@@ -240,7 +243,6 @@ void CleanUp()
 	sdDestroyFramebuffer(framebuffer);
 }
 
-#include <iostream>
 int main()
 {
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -264,12 +266,16 @@ int main()
 	CreateDepthImage();
 	CreateImage();
 
+	float time = 0.0f;
+	int loopCount = 0;
 	while (!close)
 	{
 		ProcessSDLEvents(window);
 		SDL_LockSurface(surface);
+
 		sdClearFramebuffer(framebuffer, 0);
 		sdDrawIndexed(vertexBuffer, indexBuffer);
+
 		SDL_UnlockSurface(surface);
 		SDL_UpdateWindowSurface(window);
 
@@ -282,8 +288,15 @@ int main()
 
 		frameDelta = std::chrono::duration<float, std::chrono::milliseconds::period>(std::chrono::high_resolution_clock::now() - timeSinceLastFrame).count();
 		timeSinceLastFrame = std::chrono::high_resolution_clock::now();
+		time += frameDelta;
 
-		std::cout << frameDelta << '\n';
+		if (time > 1000.0f)
+		{
+			std::cout << 1 / (time / loopCount) * 1000 << " fps\n";
+			loopCount = 0;
+			time = 0;
+		}
+		loopCount++;
 	}
 
 	CleanUp();
