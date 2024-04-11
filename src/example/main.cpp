@@ -241,6 +241,7 @@ void CleanUp()
 	sdDestroyBuffer(vertexBuffer);
 	sdDestroyBuffer(indexBuffer);
 	sdDestroyFramebuffer(framebuffer);
+	sdDestroyImage(image);
 }
 
 int main()
